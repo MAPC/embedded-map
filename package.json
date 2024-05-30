@@ -1,6 +1,7 @@
 {
   "name": "embedded-map",
   "version": "0.1.0",
+  "homepage": "https://mapc.github.io/embedded-map",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
@@ -12,12 +13,15 @@
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.2",
     "react-dom": "^18.3.1",
+    "react-esri-leaflet": "^2.0.1",
     "react-leaflet": "^4.2.1",
     "react-scripts": "5.0.1",
     "styled-components": "^6.1.11",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -34,5 +38,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.1"
   }
 }
