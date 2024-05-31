@@ -8,7 +8,7 @@ import Spinner from "react-bootstrap/Spinner";
 
 import arcgisPbfDecode from "arcgis-pbf-parser";
 
-import { MapContainer, TileLayer, ZoomControl, GeoJSON, Circle, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -49,6 +49,38 @@ const regionMapProps = {
   minZoom: zoomLevels.country,
   zoomSnap: 0.25,
 };
+
+const Legend = styled.div`
+  border-radius: 5px;
+  position: absolute;
+  width: 30%;
+  height: 40%;
+  background-color: rgba(255, 255, 255, 1);
+  bottom: calc(50% - 20%);
+  right: 0.8rem;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: 2fr;
+  padding: 1%;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+`;
+
+const LegendElement = styled.div`
+  display: flex;
+  flex-direction: row;
+
+  width: 100%;
+  height: 100%;
+`;
+
+const LegendText = styled.div`
+  margin-left: 1rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+`;
 
 // UTILS
 export const createTileURL = (style = "light-v10", token = process.env.MAPBOX_TOKEN) => {
@@ -379,9 +411,79 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
     }
   }
 
-  const pathWeight = 4.0;
+  const pathWeight = 4.0 * (10.0 / zoom);
 
   // Hook to handle map events
+
+  const seg_set = new Set();
+  const fac_set = new Set();
+
+  const LegendImages = [
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAUklEQVQ4jWNhoDJgGTVwMIfh8mYHik2LrD3AwrC8uYGBkbGegRpgRcsBFqoZBgEOIzQdHgD5nSqm/f/fyMIQUeNIrSTDAPcylDNyIoWqYPAbCABWeRFT3pkxxQAAAABJRU5ErkJggg==",
+      label: "Shared Use Path - Existing",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAa0lEQVQ4jWNhoDJgGTVwMIfh8mYHikyKrD2AYqCDuMJ+XGoPvHqIVdxBTB6hhoGBEcXA/Y4xOA3DZWC9ti3cUEaGWIaRng4d9y8hWXPj1cNgjNXAAy8fOJJq4IGXD3C7EJaORlCkUAsMfgMB/mwdMxwBDPUAAAAASUVORK5CYII=",
+      label: "	Shared Use Path - Design",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAP0lEQVQ4jWNhoDJgGTVwRIXhipb9eFVG1DiSZiADgwP57hqaYUgDAw9Q18AI4mKReAOpBFioZRAMjBrIQDEAAEs9BWZ39nGZAAAAAElFTkSuQmCC",
+      label: "Shared Use Path - Envisioned",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAWUlEQVQ4jWNhoDJgGTVwEIfh8evzHSg1zFIz8QDL8etzGxgYGOsZGP5T7Lrj1+cfYIEYRi3w32FkpkPGAyC/U8e4/40slpqJjtRKMgwwL8M4IyZSqAsGv4EA6xAXTjXwwt0AAAAASUVORK5CYII=",
+      label: "Shared Use Path - Unimproved Surface",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAa0lEQVQ4jWNhoDJgGTVwMIdhwX8Hik2bwHiAhaHgfwMDA0M9xYaBQMH/AyxUMwwCHMBebvBgYLBXZqAIHLzLwNCwg1aR0rCDugYeAPmdSuY1sjBMYHSkVpJhgKdDKIcagIVaBsHAqIEMFAMAgzQUiXCJlQ0AAAAASUVORK5CYII=",
+      label: "Protected Bike Lane and Sidewalk",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAfUlEQVQ4jWNhoDJgGTVwMIdhwX8HikyawHgAxUAHFYb9uNQeuINd3EEFSQ0DAyOKgfuzcRuGy8B6d4ShjDlEhiFIAy7LkF04cAn7wB0GBsep2OVALndQwWEgLk34QONOCMZq4IE7DI6kGogtsljQ0xGlgIUahiCDUQMZKAYAmIobNPgRrgQAAAAASUVORK5CYII=",
+      label: "Protected Bike Lane - Design or Construction",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAa0lEQVQ4jWNhoDJgGTVwMIdhwX8Hik2bwHiAhaHgfwMDA0M9xYaBQMH/AyxUMwwCHMBebvBgYLBXZqAIHLzLwNCwg1aR0rCDugYeAPmdSuY1sjBMYHSkVpJhgKdDKIcagIVaBsHAqIEMFAMAgzQUiXCJlQ0AAAAASUVORK5CYII=",
+      label: "Bike Lane and Sidewalk",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAfUlEQVQ4jWNhoDJgGTVwMIdhwX8HikyawHgAxUAHFYb9uNQeuINd3EEFSQ0DAyOKgfuzcRuGy8B6d4ShjDlEhiFIAy7LkF04cAn7wB0GBsep2OVALndQwWEgLk34QONOCMZq4IE7DI6kGogtsljQ0xGlgIUahiCDUQMZKAYAmIobNPgRrgQAAAAASUVORK5CYII=",
+      label: "Bike Lane - Design or Construction",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAeklEQVQ4jWNhoDJgGTVwEIfh9cPzHSg1TNM28QDL9YNzGxgYGesZ/v+n2HXXD88/wAI2jFrg/38HsJdF5A0ZuPglKDLr28cXDG8enqdRpLx5eJ6KBjIyHgD5nSqm/f/fyKJpm+hIrSTDAPMyjEMNwEItg2Bg1EAGigEAv9oj5xnMMgAAAAAASUVORK5CYII=",
+      label: "Shared Street - Urban",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAXUlEQVQ4jWNhoDJgGTVwEIfh9cPzHSg1TNM28QDL9YNzGxgYGesZ/v+n2HXXD88/wAI2jFrg/3+HEZkOGRkPgPxOFdP+/29k0bRNdKRWkmGAeRnGGSmRQmUw+A0EAB1DG0sM6h4hAAAAAElFTkSuQmCC",
+      label: "Shared Street - Suburban",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAUklEQVQ4jWNhoDJgGTVwJIXh9UPz/mNVwch4QNM20RGu7vB8B4b///ejK9O0S2KkrQsHv4Ga0DAgBDRtEw+AQpaggdQCLFQzCQpGDaQcDP4wBADlKw2jsAsIggAAAABJRU5ErkJggg==",
+      label: "Shared Street - Envisioned",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAPElEQVQ4jWNhoDJgGTWQYsAygg38/7b+Pz6FjMKNjCQZSC3AMnQMZCQyjIg2kFqAhWomQcGogZQDqochAHmtBOfUu2ZZAAAAAElFTkSuQmCC",
+      label: "Gap - Facility Type TBD",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAATElEQVQ4jWNhoDJgGTWQYsAyAg38H8LgwMDIUM/AwOBAoVkHGP4zNLJQyTAQADmMFmH4n6ERZDLVvMy4huEAmDNykg3DqIGUAqqHIQBHUQwTGnLlIQAAAABJRU5ErkJggg==",
+      label: "Foot Trail - Natural Surface",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAXklEQVQ4jWNhoDJgGTWQYsAygg38H8LggEsR4xqGA8h8bGoZoWoQLmRk2I/DPJDCAyiGYVfLiGoglQALnPWfwZEYDSCv/Q/BrZYFWSGxrsCnloWByoBl1ECKweAPQwBVthIAfgs3GwAAAABJRU5ErkJggg==",
+      label: "Foot Trail - Envisioned Natural Surface",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAW0lEQVQ4jWNhoDJgGTVwJIXh/zCGBkoMYlwF0Y9w4X+GesrcxoBqIONqBkaGwR2GIQwOlBjEuIbhAIqBDIwM+ylzGwMjuoGNDFQALOjRTjUDqQVYqGYSw4g1EADiDgtqdh0lnwAAAABJRU5ErkJggg==",
+      label: "Foot Trail - Roadway Section",
+    },
+    {
+      src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAcklEQVQ4je2QUQ5AMBAFZ2UPxh3cB9cRd8DJKkTQZIuGH9FJ9qd5O+k+5WU0Cf/UoSvJQyHpGKz3446smf2HQh/wzUFTiFDBJhVf6CiIxdHAMht6ddYZ1o5+qEPxu7jdYcZod9hSx/rWMwdT+BaahDxlAnsJHovF/s4/AAAAAElFTkSuQmCC",
+      label: "Foot Trail - Envisioned Roadway Section",
+    },
+  ];
 
   return (
     <Wrapper height={wrapperHeight}>
@@ -397,6 +499,17 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
         {/* {layers} */}
 
         <ZoomControl position="bottomright" />
+        <ScaleControl position="topright" />
+        <Legend>
+          {LegendImages.map((legend) => {
+            return (
+              <LegendElement>
+                <img src={legend.src} style={{ width: 30, height: 30 }} />
+                <LegendText>{legend.label}</LegendText>
+              </LegendElement>
+            );
+          })}
+        </Legend>
         <MapEventsHandler setZoom={setZoom} />
         <FeatureLayer
           url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
@@ -404,35 +517,43 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
           style={(feature) => {
             let colorRow;
             let dashArray;
+            seg_set.add(feature.properties.seg_type);
+            fac_set.add(feature.properties.fac_stat);
+
             if (feature.properties.seg_type == 1) {
               colorRow = "#00a884";
-            } else if (feature.properties.seg_type == 2) {
-              colorRow = "#00a884";
-            } else if (feature.properties.seg_type == 3) {
+            }
+            if (feature.properties.seg_type == 1 && feature.properties.fac_stat == 3) {
               colorRow = "#00a884";
               dashArray = "3,8";
-            } else if (feature.properties.seg_type == 4) {
+            } else if (feature.properties.seg_type == 6) {
               colorRow = "#c7d79e";
-            } else if (feature.properties.seg_type == 5 || feature.properties.seg_type == 6) {
+            } else if (feature.properties.seg_type == 2) {
               colorRow = "#0170ff";
-            } else if (feature.properties.seg_type == 7 || feature.properties.seg_type == 8) {
+            } else if (feature.properties.seg_type == 3) {
               colorRow = "#73b2ff";
-            } else if (feature.properties.seg_type == 9 || feature.properties.seg_type == 10) {
+            } else if (feature.properties.seg_type == 4 || feature.properties.seg_type == 5) {
               colorRow = "#d7c29e";
-            } else if (feature.properties.seg_type == 11) {
+            }
+            if (feature.properties.seg_type == 5 && feature.properties.fac_stat == 3) {
               colorRow = "#d7c29e";
               dashArray = "3,8";
-            } else if (feature.properties.seg_type == 12) {
+            } else if (
+              feature.properties.seg_type == 9 &&
+              (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
+            ) {
               colorRow = "#ffed7f";
               dashArray = "3,8";
-            } else if (feature.properties.seg_type == 13) {
+            } else if (feature.properties.seg_type == 11) {
               colorRow = "#ff5b0a";
-            } else if (feature.properties.seg_type == 14) {
+            }
+            if (feature.properties.seg_type == 11 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
               colorRow = "#ff5b0a";
               // dashArray = "3,8";
-            } else if (feature.properties.seg_type == 15) {
+            }
+            if (feature.properties.seg_type == 12) {
               colorRow = "#ff732d";
-            } else if (feature.properties.seg_type == 16) {
+            } else if (feature.properties.seg_type == 12 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
               colorRow = "#ff732d";
               dashArray = "3,8";
             }
@@ -456,23 +577,24 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
           style={(feature) => {
             let colorRow;
             let dashArray;
-            if (feature.properties.seg_type == 2) {
+            if (feature.properties.seg_type == 1 && feature.properties.fac_stat == 2) {
               colorRow = "white";
               dashArray = "3,8";
-            } else if (feature.properties.seg_type == 5) {
+            } else if (feature.properties.seg_type == 2 && feature.properties.fac_stat == 1) {
               colorRow = "white";
-            } else if (feature.properties.seg_type == 6) {
-              colorRow = "white";
-              dashArray = "3,8";
-            } else if (feature.properties.seg_type == 8) {
+            } else if (feature.properties.seg_type == 2 && (feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)) {
               colorRow = "white";
               dashArray = "3,8";
-            } else if (feature.properties.seg_type == 9) {
+            } else if (feature.properties.seg_type == 3 && (feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)) {
               colorRow = "white";
               dashArray = "3,8";
-            } else if (feature.properties.seg_type == 15 || feature.properties.seg_type == 16) {
+            } else if (feature.properties.seg_type == 4 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 1)) {
               colorRow = "white";
-              dashArray = "3,8";
+            } else if (
+              feature.properties.seg_type == 12 &&
+              (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
+            ) {
+              colorRow = "white";
             }
 
             return {
