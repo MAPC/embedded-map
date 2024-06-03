@@ -8,6 +8,7 @@ import Spinner from "react-bootstrap/Spinner";
 
 import arcgisPbfDecode from "arcgis-pbf-parser";
 
+import MAPCLogo from "./assets/mapc-semitransparent.svg";
 import { MapContainer, TileLayer, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
@@ -53,10 +54,10 @@ const regionMapProps = {
 const Legend = styled.div`
   border-radius: 5px;
   position: absolute;
-  width: 30%;
+  width: 22.5%;
   height: 40%;
   background-color: rgba(255, 255, 255, 1);
-  bottom: calc(50% - 20%);
+  top: 0.8rem;
   right: 0.8rem;
   z-index: 1000;
   display: grid;
@@ -65,14 +66,17 @@ const Legend = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   text-overflow: ellipsis;
+  border-style: solid;
+  border-color: rgba(175, 175, 175, 1);
+  border-width: 2px;
 `;
 
 const LegendElement = styled.div`
   display: flex;
   flex-direction: row;
 
-  width: 100%;
-  height: 100%;
+  /* width: 100%;
+  height: 100%; */
 `;
 
 const LegendText = styled.div`
@@ -80,6 +84,47 @@ const LegendText = styled.div`
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+`;
+
+const Container = styled.div`
+  display: flex;
+  flex-direction: row;
+`;
+
+const RightSidebar = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 30%;
+  height: 100vh;
+  background-color: white;
+  border-style: solid;
+  border-color: rgba(175, 175, 175, 1);
+  border-width: 0 0 0 2px;
+`;
+
+const SidebarTop = styled.div`
+  height: 70%;
+  border-style: solid;
+  border-color: rgba(225, 225, 225, 1);
+  border-width: 0 0 2px 0;
+  padding: 0.5rem 1rem 1.5rem 1.5rem;
+  overflow-y: scroll;
+`;
+const SidebarBottom = styled.div`
+  background-color: rgba(250, 250, 250, 1);
+  height: 30%;
+  padding: 1rem 1.5rem;
+`;
+
+const SideBarTitle = styled.h4`
+  margin-bottom: 0.25rem;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  background-color: #004a91;
+  color: #f2f5ff;
+  padding: 0.7rem 0.7rem;
 `;
 
 // UTILS
@@ -314,6 +359,8 @@ const LoadingContainer = styled.div`
 const LoadingIndicator = styled(Spinner)``;
 
 const Wrapper = styled.div`
+  flex: 1;
+  height: 100%;
   div.leaflet-container {
     height: ${(props) => props.height};
   }
@@ -486,21 +533,22 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
   ];
 
   return (
-    <Wrapper height={wrapperHeight}>
-      <MapContainer
-        {...focusProps}
-        zoomControl={false}
-        preferCanvas={false}
-        scrollWheelZoom={false} // disable original zoom function
-        smoothWheelZoom={true} // enable smooth zoom
-        smoothSensitivity={2.5} // zoom speed. default is 1
-      >
-        <TileLayer url={createTileURL("light-v10", mapboxToken)} attribution={mapboxAttribution} tileSize={512} zoomOffset={-1} />
-        {/* {layers} */}
+    <Container>
+      <Wrapper height={wrapperHeight}>
+        <MapContainer
+          {...focusProps}
+          zoomControl={false}
+          preferCanvas={false}
+          scrollWheelZoom={false} // disable original zoom function
+          smoothWheelZoom={true} // enable smooth zoom
+          smoothSensitivity={2.5} // zoom speed. default is 1
+        >
+          <TileLayer url={createTileURL("light-v10", mapboxToken)} attribution={mapboxAttribution} tileSize={512} zoomOffset={-1} />
+          {/* {layers} */}
 
-        <ZoomControl position="bottomright" />
-        <ScaleControl position="topright" />
-        <Legend>
+          <ZoomControl position="bottomright" />
+          <ScaleControl position="bottomright" />
+          {/* <Legend>
           {LegendImages.map((legend) => {
             return (
               <LegendElement>
@@ -509,108 +557,128 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
               </LegendElement>
             );
           })}
-        </Legend>
-        <MapEventsHandler setZoom={setZoom} />
-        <FeatureLayer
-          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
-          simplifyFactor={setSimplifyFactor(zoom)}
-          style={(feature) => {
-            let colorRow;
-            let dashArray;
-            seg_set.add(feature.properties.seg_type);
-            fac_set.add(feature.properties.fac_stat);
+        </Legend> */}
+          <MapEventsHandler setZoom={setZoom} />
+          <FeatureLayer
+            url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+            simplifyFactor={setSimplifyFactor(zoom)}
+            style={(feature) => {
+              let colorRow;
+              let dashArray;
+              seg_set.add(feature.properties.seg_type);
+              fac_set.add(feature.properties.fac_stat);
 
-            if (feature.properties.seg_type == 1) {
-              colorRow = "#00a884";
-            }
-            if (feature.properties.seg_type == 1 && feature.properties.fac_stat == 3) {
-              colorRow = "#00a884";
-              dashArray = "3,8";
-            } else if (feature.properties.seg_type == 6) {
-              colorRow = "#c7d79e";
-            } else if (feature.properties.seg_type == 2) {
-              colorRow = "#0170ff";
-            } else if (feature.properties.seg_type == 3) {
-              colorRow = "#73b2ff";
-            } else if (feature.properties.seg_type == 4 || feature.properties.seg_type == 5) {
-              colorRow = "#d7c29e";
-            }
-            if (feature.properties.seg_type == 5 && feature.properties.fac_stat == 3) {
-              colorRow = "#d7c29e";
-              dashArray = "3,8";
-            } else if (
-              feature.properties.seg_type == 9 &&
-              (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
-            ) {
-              colorRow = "#ffed7f";
-              dashArray = "3,8";
-            } else if (feature.properties.seg_type == 11) {
-              colorRow = "#ff5b0a";
-            }
-            if (feature.properties.seg_type == 11 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
-              colorRow = "#ff5b0a";
-              // dashArray = "3,8";
-            }
-            if (feature.properties.seg_type == 12) {
-              colorRow = "#ff732d";
-            } else if (feature.properties.seg_type == 12 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
-              colorRow = "#ff732d";
-              dashArray = "3,8";
-            }
+              if (feature.properties.seg_type == 1) {
+                colorRow = "#00a884";
+              }
+              if (feature.properties.seg_type == 1 && feature.properties.fac_stat == 3) {
+                colorRow = "#00a884";
+                dashArray = "3,8";
+              } else if (feature.properties.seg_type == 6) {
+                colorRow = "#c7d79e";
+              } else if (feature.properties.seg_type == 2) {
+                colorRow = "#0170ff";
+              } else if (feature.properties.seg_type == 3) {
+                colorRow = "#73b2ff";
+              } else if (feature.properties.seg_type == 4 || feature.properties.seg_type == 5) {
+                colorRow = "#d7c29e";
+              }
+              if (feature.properties.seg_type == 5 && feature.properties.fac_stat == 3) {
+                colorRow = "#d7c29e";
+                dashArray = "3,8";
+              } else if (
+                feature.properties.seg_type == 9 &&
+                (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
+              ) {
+                colorRow = "#ffed7f";
+                dashArray = "3,8";
+              } else if (feature.properties.seg_type == 11) {
+                colorRow = "#ff5b0a";
+              }
+              if (feature.properties.seg_type == 11 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
+                colorRow = "#ff5b0a";
+                // dashArray = "3,8";
+              }
+              if (feature.properties.seg_type == 12) {
+                colorRow = "#ff732d";
+              } else if (feature.properties.seg_type == 12 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
+                colorRow = "#ff732d";
+                dashArray = "3,8";
+              }
 
-            return {
-              color: colorRow,
-              stroke: colorRow,
-              weight: pathWeight,
-              fillOpacity: 0,
-              opacity: 1,
-              dashArray: dashArray,
-              dashOffset: "0",
-            };
-          }}
-          pane="tilePane"
-        />
-        {/* inverted dash extra layer */}
-        <FeatureLayer
-          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
-          simplifyFactor={setSimplifyFactor(zoom)}
-          style={(feature) => {
-            let colorRow;
-            let dashArray;
-            if (feature.properties.seg_type == 1 && feature.properties.fac_stat == 2) {
-              colorRow = "white";
-              dashArray = "3,8";
-            } else if (feature.properties.seg_type == 2 && feature.properties.fac_stat == 1) {
-              colorRow = "white";
-            } else if (feature.properties.seg_type == 2 && (feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)) {
-              colorRow = "white";
-              dashArray = "3,8";
-            } else if (feature.properties.seg_type == 3 && (feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)) {
-              colorRow = "white";
-              dashArray = "3,8";
-            } else if (feature.properties.seg_type == 4 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 1)) {
-              colorRow = "white";
-            } else if (
-              feature.properties.seg_type == 12 &&
-              (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
-            ) {
-              colorRow = "white";
-            }
+              return {
+                color: colorRow,
+                stroke: colorRow,
+                weight: pathWeight,
+                fillOpacity: 0,
+                opacity: 1,
+                dashArray: dashArray,
+                dashOffset: "0",
+              };
+            }}
+            pane="tilePane"
+          />
+          {/* inverted dash extra layer */}
+          <FeatureLayer
+            url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+            simplifyFactor={setSimplifyFactor(zoom)}
+            style={(feature) => {
+              let colorRow;
+              let dashArray;
+              if (feature.properties.seg_type == 1 && feature.properties.fac_stat == 2) {
+                colorRow = "white";
+                dashArray = "3,8";
+              } else if (feature.properties.seg_type == 2 && feature.properties.fac_stat == 1) {
+                colorRow = "white";
+              } else if (feature.properties.seg_type == 2 && (feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)) {
+                colorRow = "white";
+                dashArray = "3,8";
+              } else if (feature.properties.seg_type == 3 && (feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)) {
+                colorRow = "white";
+                dashArray = "3,8";
+              } else if (feature.properties.seg_type == 4 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 1)) {
+                colorRow = "white";
+              } else if (
+                feature.properties.seg_type == 12 &&
+                (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
+              ) {
+                colorRow = "white";
+              }
 
-            return {
-              color: colorRow,
-              stroke: colorRow,
-              weight: pathWeight - 2.0,
-              fillOpacity: 0,
-              opacity: 1,
-              dashArray: dashArray,
-              dashOffset: "0",
-            };
-          }}
-          pane="tilePane"
-        />
-      </MapContainer>
-    </Wrapper>
+              return {
+                color: colorRow,
+                stroke: colorRow,
+                weight: pathWeight - 2.0,
+                fillOpacity: 0,
+                opacity: 1,
+                dashArray: dashArray,
+                dashOffset: "0",
+              };
+            }}
+            pane="tilePane"
+          />
+        </MapContainer>
+      </Wrapper>
+      <RightSidebar>
+        <SideBarTitle>
+          <a href="https://www.mapc.org/transportation/landline/" style={{ position: "relative", color: "inherit", textDecoration: "none" }}>
+            <img alt="MAPC logo" src={MAPCLogo} style={{ marginRight: "0.5rem", width: 90, height: "auto" }} />
+            <span style={{ position: "relative", bottom: "-15px" }}>LandLine</span>
+          </a>
+        </SideBarTitle>
+        <SidebarTop>
+          {LegendImages.map((legend) => {
+            return (
+              <LegendElement>
+                <img src={legend.src} style={{ width: 30, height: 30 }} />
+                <LegendText>{legend.label}</LegendText>
+              </LegendElement>
+            );
+          })}
+        </SidebarTop>
+        <SidebarBottom></SidebarBottom>
+      </RightSidebar>
+    </Container>
   );
 };
 
