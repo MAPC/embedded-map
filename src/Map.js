@@ -19,6 +19,8 @@ import "./SmoothScroll";
 import { polygon } from "leaflet";
 import { FeatureLayer } from "react-esri-leaflet";
 
+import Airtable from "airtable";
+
 // constants
 const MAP_DB = "MapCache";
 const AGOL_ORG_HASH = "c5WwApDsDjRhIVkH";
@@ -85,6 +87,13 @@ const LegendText = styled.div`
   white-space: nowrap;
   text-overflow: ellipsis;
 `;
+const LegendTextStrong = styled.div`
+  margin-left: 1rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: bold;
+`;
 
 const Container = styled.div`
   display: flex;
@@ -114,6 +123,48 @@ const SidebarBottom = styled.div`
   background-color: rgba(250, 250, 250, 1);
   height: 30%;
   padding: 1rem 1.5rem;
+  color: rgba(175, 175, 175, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+`;
+
+const SidebarBottomList = styled.div`
+  width: 100%;
+  height: 100%;
+  padding: 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #0b1618;
+`;
+
+const SidebarBottomName = styled.div`
+  width: 100%;
+
+  color: #0b1618;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+`;
+
+const SidebarBottomLine = styled.div`
+  width: 100%;
+  color: #0b1618;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+`;
+
+const SidebarBottomLeft = styled.div`
+  float: left;
+  color: rgba(200, 200, 200, 1);
+`;
+
+const SidebarBottomRight = styled.div`
+  float: right;
 `;
 
 const SideBarTitle = styled.h4`
@@ -385,7 +436,47 @@ function setSimplifyFactor(zoom) {
 }
 export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points = [], mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN }) => {
   const [polygons, setPolygons] = useState([]);
+  const [selectedFeature, setSelectedFeature] = useState();
+  const [selectedType, setSelectedType] = useState();
+  const [selectedProjectLink, setSelectedProjectLink] = useState();
+
+  const [projectPoints, setProjectPoints] = useState();
+  const [projectList, setProjectList] = useState();
+
   const [zoom, setZoom] = useState(10);
+
+  useEffect(() => {
+    // AIRTABLE CMS
+
+    var base = new Airtable({ apiKey: process.env.AIRTABLE_TOKEN }).base("appuLlZwmGGeG3m9k");
+
+    base("Greenway Projects")
+      .select({
+        // Selecting the first 3 records in Grid view:
+        maxRecords: 3,
+        view: "Grid view",
+      })
+      .eachPage(
+        function page(records, fetchNextPage) {
+          // This function (`page`) will get called for each page of records.
+
+          records.forEach(function (record) {
+            console.log("Retrieved", record.get("Name"));
+          });
+
+          // To fetch the next page of records, call `fetchNextPage`.
+          // If there are more records, `page` will get called again.
+          // If there are no more records, `done` will get called.
+          fetchNextPage();
+        },
+        function done(err) {
+          if (err) {
+            console.error(err);
+            return;
+          }
+        }
+      );
+  });
 
   useEffect(() => {
     const loadPolygons = async () => {
@@ -458,7 +549,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
     }
   }
 
-  const pathWeight = 4.0 * (10.0 / zoom);
+  const pathWeight = 3.5 * (10.0 / zoom);
 
   // Hook to handle map events
 
@@ -532,6 +623,87 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
     },
   ];
 
+  function handleFeatureClick(feature) {
+    console.log(feature.layer.feature.properties);
+    console.log(selectedFeature);
+    if (feature.layer.feature.properties) {
+      setSelectedFeature(feature.layer.feature.properties);
+    }
+  }
+
+  useEffect(() => {
+    function mapType() {
+      if (selectedFeature == undefined) {
+        return;
+      }
+      let type = "";
+      if (selectedFeature.seg_type == 1 && selectedFeature.fac_stat == 1) {
+        type = "Shared Use Path - Existing";
+      }
+      if (selectedFeature.seg_type == 1 && selectedFeature.fac_stat == 2) {
+        type = "Shared Use Path - Designed";
+      }
+      if (selectedFeature.seg_type == 1 && selectedFeature.fac_stat == 3) {
+        type = "Shared Use Path - Envisioned";
+      }
+      if (selectedFeature.seg_type == 6) {
+        type = "Shared Use Path - Unimproved Surface";
+      }
+      if (selectedFeature.seg_type == 2 && selectedFeature.fac_stat == 1) {
+        type = "Protected Bike Lane and Sidewalk";
+      }
+      if (selectedFeature.seg_type == 2 && (selectedFeature.fac_stat == 2 || selectedFeature.fac_stat == 3)) {
+        type = "Protected Bike Lane - Design or Construction";
+      }
+      if (selectedFeature.seg_type == 3 && selectedFeature.fac_stat == 1) {
+        type = "Bike Lane and Sidewalk";
+      }
+      if (selectedFeature.seg_type == 3 && (selectedFeature.fac_stat == 2 || selectedFeature.fac_stat == 3)) {
+        type = "Bike Lane - Design or Construction";
+      }
+      if (selectedFeature.seg_type == 4 && (selectedFeature.fac_stat == 3 || selectedFeature.fac_stat == 1)) {
+        type = "Shared Street - Urban";
+      }
+      if (selectedFeature.seg_type == 5 && selectedFeature.fac_stat == 1) {
+        type = "Shared Street - Suburban";
+      }
+      if (selectedFeature.seg_type == 5 && selectedFeature.fac_stat == 3) {
+        type = "Shared Street - Envisioned";
+      }
+      if (selectedFeature.seg_type == 9) {
+        type = "Gap - Facility Type TBD";
+      }
+      if (selectedFeature.seg_type == 11 && selectedFeature.fac_stat == 1) {
+        type = "Foot Trail - Natural Surface";
+      }
+      if (selectedFeature.seg_type == 11 && (selectedFeature.fac_stat == 2 || selectedFeature.fac_stat == 3)) {
+        type = "Foot Trail - Envisioned Natural Surface";
+      }
+      if (selectedFeature.seg_type == 12 && selectedFeature.fac_stat == 1) {
+        type = "Foot Trail - Roadway Section";
+      }
+      if (selectedFeature.seg_type == 12 && (selectedFeature.fac_stat == 2 || selectedFeature.fac_stat == 3)) {
+        type = "Foot-Trail - Envisioned Roadway Section";
+      }
+
+      setSelectedType(type);
+    }
+
+    mapType();
+  }, [selectedFeature]);
+
+  useEffect(() => {
+    function mapProjectLink() {
+      let project = "";
+
+      if (selectedFeature.reg_name == "") {
+      }
+
+      setSelectedProjectLink(project);
+    }
+    mapProjectLink();
+  }, [selectedFeature]);
+
   return (
     <Container>
       <Wrapper height={wrapperHeight}>
@@ -562,6 +734,9 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
           <FeatureLayer
             url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
             simplifyFactor={setSimplifyFactor(zoom)}
+            eventHandlers={{
+              click: handleFeatureClick,
+            }}
             style={(feature) => {
               let colorRow;
               let dashArray;
@@ -663,7 +838,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
         <SideBarTitle>
           <a href="https://www.mapc.org/transportation/landline/" style={{ position: "relative", color: "inherit", textDecoration: "none" }}>
             <img alt="MAPC logo" src={MAPCLogo} style={{ marginRight: "0.5rem", width: 90, height: "auto" }} />
-            <span style={{ position: "relative", bottom: "-15px" }}>LandLine</span>
+            <span style={{ position: "relative", bottom: "-16px" }}>LandLine</span>
           </a>
         </SideBarTitle>
         <SidebarTop>
@@ -671,12 +846,35 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
             return (
               <LegendElement>
                 <img src={legend.src} style={{ width: 30, height: 30 }} />
-                <LegendText>{legend.label}</LegendText>
+                {legend.label == selectedType ? <LegendTextStrong>{legend.label}</LegendTextStrong> : <LegendText>{legend.label}</LegendText>}
               </LegendElement>
             );
           })}
         </SidebarTop>
-        <SidebarBottom></SidebarBottom>
+        <SidebarBottom>
+          {selectedFeature !== undefined ? (
+            <SidebarBottomList>
+              <SidebarBottomName>
+                <SidebarBottomLeft>Name:</SidebarBottomLeft>
+                <SidebarBottomRight>{}</SidebarBottomRight>
+              </SidebarBottomName>
+              <SidebarBottomLine>
+                <SidebarBottomLeft>Type:</SidebarBottomLeft>
+                <SidebarBottomRight>{selectedType}</SidebarBottomRight>
+              </SidebarBottomLine>
+              <SidebarBottomLine>
+                <SidebarBottomLeft>Project:</SidebarBottomLeft>
+                <SidebarBottomRight>{selectedFeature.reg_name}</SidebarBottomRight>
+              </SidebarBottomLine>
+              <SidebarBottomLine>
+                <SidebarBottomLeft>Link:</SidebarBottomLeft>
+                <SidebarBottomRight>{selectedProjectLink}</SidebarBottomRight>
+              </SidebarBottomLine>
+            </SidebarBottomList>
+          ) : (
+            "Select a landline"
+          )}
+        </SidebarBottom>
       </RightSidebar>
     </Container>
   );
