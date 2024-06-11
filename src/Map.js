@@ -141,10 +141,11 @@ const SidebarBottomList = styled.div`
   color: #0b1618;
 `;
 
-const SidebarBottomName = styled.div`
+const SidebarBottomTitle = styled.div`
   width: 100%;
 
-  color: #0b1618;
+  font-weight: bold;
+  font-size: 1rem;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
@@ -389,7 +390,7 @@ export const queryFeatureService = async ({ serviceName, token = null, layerID =
 const LoadingOverlay = styled.div`
   position: absolute;
   height: 100vh;
-  width: 100vw;
+  width: 100%;
   background-color: rgba(200, 200, 200, 0.5);
   z-index: 798;
 `;
@@ -434,26 +435,26 @@ function setSimplifyFactor(zoom) {
 
   return 0;
 }
-export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points = [], mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN }) => {
+export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoints = [], mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN }) => {
   const [polygons, setPolygons] = useState([]);
   const [selectedFeature, setSelectedFeature] = useState();
   const [selectedType, setSelectedType] = useState();
+  const [selectedProject, setSelectedProject] = useState();
   const [selectedProjectLink, setSelectedProjectLink] = useState();
+  const [lastSelected, setLastSelected] = useState("feature");
 
-  const [projectPoints, setProjectPoints] = useState();
-  const [projectList, setProjectList] = useState();
+  const [projectList, setProjectList] = useState({});
 
   const [zoom, setZoom] = useState(10);
 
   useEffect(() => {
     // AIRTABLE CMS
+    var base = new Airtable({ apiKey: process.env.REACT_APP_AIRTABLE_TOKEN }).base("appuLlZwmGGeG3m9k");
 
-    var base = new Airtable({ apiKey: process.env.AIRTABLE_TOKEN }).base("appuLlZwmGGeG3m9k");
-
+    let tempProjectObject = {};
     base("Greenway Projects")
       .select({
         // Selecting the first 3 records in Grid view:
-        maxRecords: 3,
         view: "Grid view",
       })
       .eachPage(
@@ -461,7 +462,14 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
           // This function (`page`) will get called for each page of records.
 
           records.forEach(function (record) {
-            console.log("Retrieved", record.get("Name"));
+            if (record != null && record.get("Status") == "Published") {
+              tempProjectObject[record.get("Name")] = {
+                Lat: record.get("Lat"),
+                Long: record.get("Long"),
+                Description: record.get("Description"),
+                Link: record.get("Link"),
+              };
+            }
           });
 
           // To fetch the next page of records, call `fetchNextPage`.
@@ -474,9 +482,10 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
             console.error(err);
             return;
           }
+          setProjectList(tempProjectObject);
         }
       );
-  });
+  }, []);
 
   useEffect(() => {
     const loadPolygons = async () => {
@@ -514,7 +523,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
 
   let layers = [];
   // TODO: provide options for indicating "blocking" vs "non-blocking" layers
-  if (polygons.length == 0 && points.length == 0) {
+  if (polygons.length == 0 && Object.keys(projectList).length == 0) {
     layers = [
       <LoadingOverlay>
         <LoadingContainer>
@@ -526,23 +535,33 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
     ];
   }
 
-  if (polygons.length > 0) {
-    for (let polyConfig of polygons) {
-      // TODO: Set up default polygon colors in constants
-      layers.push(<GeoJSON id={polyConfig.id} key={polyConfig.id} data={polyConfig.data} style={polyConfig.styleFunction} />);
-    }
-  }
+  // if (polygons.length > 0) {
+  //   for (let polyConfig of polygons) {
+  //     // TODO: Set up default polygon colors in constants
+  //     layers.push(<GeoJSON id={polyConfig.id} key={polyConfig.id} data={polyConfig.data} style={polyConfig.styleFunction} />);
+  //   }
+  // }
 
-  if (points.length > 0) {
-    for (let pointConfig of points) {
-      for (let point of pointConfig.data) {
-        // TODO: Set up default point colors in constants
+  function handleProjectClick(feature) {
+    setSelectedProject(feature.target.options.name);
+    console.log(feature.target.options);
+    setLastSelected("project");
+  }
+  if (Object.keys(projectList).length > 0) {
+    for (let projectName of Object.keys(projectList)) {
+      const point = projectList[projectName];
+      // TODO: Set up default point colors in constants
+      if (point.Lat != undefined && point.Long != undefined) {
         layers.push(
           <Circle
-            key={point.properties[pointConfig.keyField]}
-            pathOptions={pointConfig.pathOptions}
-            radius={pointConfig.radius}
-            center={[point.properties[pointConfig.latitudeField], point.properties[pointConfig.longitudeField]]}
+            key={projectName}
+            name={projectName}
+            pathOptions={{ color: "blue", fillOpacity: "100%" }}
+            radius={7500 / zoom}
+            center={[point.Lat, point.Long]}
+            eventHandlers={{
+              click: handleProjectClick,
+            }}
           />
         );
       }
@@ -624,10 +643,9 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
   ];
 
   function handleFeatureClick(feature) {
-    console.log(feature.layer.feature.properties);
-    console.log(selectedFeature);
     if (feature.layer.feature.properties) {
       setSelectedFeature(feature.layer.feature.properties);
+      setLastSelected("feature");
     }
   }
 
@@ -694,9 +712,10 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
 
   useEffect(() => {
     function mapProjectLink() {
+      // TODO: once feature data has mapping for project name set project to relevant link (could potentially be found in projectList)
       let project = "";
 
-      if (selectedFeature.reg_name == "") {
+      if (selectedFeature != null && selectedFeature.reg_name == "") {
       }
 
       setSelectedProjectLink(project);
@@ -716,7 +735,6 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
           smoothSensitivity={2.5} // zoom speed. default is 1
         >
           <TileLayer url={createTileURL("light-v10", mapboxToken)} attribution={mapboxAttribution} tileSize={512} zoomOffset={-1} />
-          {/* {layers} */}
 
           <ZoomControl position="bottomright" />
           <ScaleControl position="bottomright" />
@@ -832,6 +850,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
             }}
             pane="tilePane"
           />
+          {layers}
         </MapContainer>
       </Wrapper>
       <RightSidebar>
@@ -852,27 +871,60 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", points =
           })}
         </SidebarTop>
         <SidebarBottom>
-          {selectedFeature !== undefined ? (
+          {lastSelected == "feature" ? (
+            selectedFeature !== undefined ? (
+              <SidebarBottomList>
+                <SidebarBottomTitle>Landline</SidebarBottomTitle>
+                <SidebarBottomLine>
+                  <SidebarBottomLeft>Name:</SidebarBottomLeft>
+                  <SidebarBottomRight>{}</SidebarBottomRight>
+                </SidebarBottomLine>
+                <SidebarBottomLine>
+                  <SidebarBottomLeft>Type:</SidebarBottomLeft>
+                  <SidebarBottomRight>{selectedType}</SidebarBottomRight>
+                </SidebarBottomLine>
+                <SidebarBottomLine>
+                  <SidebarBottomLeft>Project:</SidebarBottomLeft>
+                  <SidebarBottomRight>{selectedFeature.reg_name}</SidebarBottomRight>
+                </SidebarBottomLine>
+                <SidebarBottomLine>
+                  <SidebarBottomLeft>Link:</SidebarBottomLeft>
+                  <SidebarBottomRight>{selectedProjectLink}</SidebarBottomRight>
+                </SidebarBottomLine>
+              </SidebarBottomList>
+            ) : (
+              "Select a landline"
+            )
+          ) : selectedProject !== undefined ? (
             <SidebarBottomList>
-              <SidebarBottomName>
-                <SidebarBottomLeft>Name:</SidebarBottomLeft>
-                <SidebarBottomRight>{}</SidebarBottomRight>
-              </SidebarBottomName>
+              <SidebarBottomTitle>Project</SidebarBottomTitle>
               <SidebarBottomLine>
-                <SidebarBottomLeft>Type:</SidebarBottomLeft>
-                <SidebarBottomRight>{selectedType}</SidebarBottomRight>
+                <SidebarBottomLeft>Name:</SidebarBottomLeft>
+                <SidebarBottomRight>{selectedProject}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
-                <SidebarBottomLeft>Project:</SidebarBottomLeft>
-                <SidebarBottomRight>{selectedFeature.reg_name}</SidebarBottomRight>
+                <SidebarBottomLeft>Latitude:</SidebarBottomLeft>
+                <SidebarBottomRight>{projectList[selectedProject].Lat}</SidebarBottomRight>
+              </SidebarBottomLine>
+              <SidebarBottomLine>
+                <SidebarBottomLeft>Longitude:</SidebarBottomLeft>
+                <SidebarBottomRight>{projectList[selectedProject].Long}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Link:</SidebarBottomLeft>
-                <SidebarBottomRight>{selectedProjectLink}</SidebarBottomRight>
+                <SidebarBottomRight>
+                  <a href={projectList[selectedProject].Link} target="_blank" style={{ overflowX: "ellipses" }}>
+                    {projectList[selectedProject].Link}
+                  </a>
+                </SidebarBottomRight>
+              </SidebarBottomLine>
+              <SidebarBottomLine>
+                <SidebarBottomLeft>Description:</SidebarBottomLeft>
+                <SidebarBottomRight>{projectList[selectedProject].Description}</SidebarBottomRight>
               </SidebarBottomLine>
             </SidebarBottomList>
           ) : (
-            "Select a landline"
+            "Select a project"
           )}
         </SidebarBottom>
       </RightSidebar>
