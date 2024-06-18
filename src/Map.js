@@ -285,16 +285,6 @@ const MapEventsHandler = ({ setZoom }) => {
   return null;
 };
 
-function setSimplifyFactor(zoom) {
-  if (zoom >= 10) {
-    return 0.5;
-  } else if (zoom >= 5) {
-    return 0.25;
-  }
-
-  return 0;
-}
-
 // Hook to handle map events
 const LegendImages = [
   {
@@ -407,6 +397,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
   const [projectList, setProjectList] = useState({});
 
   const [zoom, setZoom] = useState(10);
+  const [simplifyFactor, setSimplifyFactor] = useState(0);
 
   const target = useRef(null);
   const [showBaseMaps, setShowBaseMaps] = useState(false);
@@ -624,7 +615,18 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
     };
 
     setFeatureQuery(generateQuery);
+    setIsLoading(true);
   }, [showEnvisioned, showDesignConstruction, showExisting]);
+
+  useEffect(() => {
+    if (simplifyFactor != 0.5 && zoom >= 10) {
+      setSimplifyFactor(0.5);
+    } else if (simplifyFactor != 0.25 && zoom >= 5) {
+      setSimplifyFactor(0.25);
+    } else if (simplifyFactor != 0) {
+      setSimplifyFactor(0);
+    }
+  }, [zoom]);
 
   function handleSelectTab(eventKey) {
     setSelectedTab(eventKey);
@@ -741,10 +743,9 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           <FeatureLayer
             url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
             key={featureQuery} //FORCE RELOAD ON QUERY CHANGE
-            simplifyFactor={setSimplifyFactor(zoom)}
+            simplifyFactor={simplifyFactor}
             eventHandlers={{
               click: handleFeatureClick,
-              loading: () => setIsLoading(true),
               load: () => setIsLoading(false),
             }}
             where={featureQuery}
@@ -805,7 +806,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           {/* inverted dash extra layer */}
           <FeatureLayer
             url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
-            simplifyFactor={setSimplifyFactor(zoom)}
+            simplifyFactor={simplifyFactor}
             where={featureQuery + " AND " + negativeFeatureQuery}
             style={(feature) => {
               let colorRow;
@@ -905,7 +906,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                       width="30"
                       height="30"
                       fill={project == selectedProject ? "red" : "currentColor"}
-                      class="bi bi-geo-alt-fill"
+                      className="bi bi-geo-alt-fill"
                       viewBox="0 0 25 25"
                     >
                       <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6" />
