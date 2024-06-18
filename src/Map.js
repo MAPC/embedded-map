@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-import { openDB } from "idb";
+// import { openDB } from "idb";
 
 import styled from "styled-components";
 
@@ -9,7 +9,7 @@ import Nav from "react-bootstrap/Nav";
 import Form from "react-bootstrap/Form";
 import Overlay from "react-bootstrap/Overlay";
 
-import arcgisPbfDecode from "arcgis-pbf-parser";
+// import arcgisPbfDecode from "arcgis-pbf-parser";
 
 import MAPCLogo from "./assets/mapc-semitransparent.svg";
 import { MapContainer, TileLayer, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl } from "react-leaflet";
@@ -18,17 +18,13 @@ import "leaflet/dist/leaflet.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 // Importing "for side effects", i.e., to extend leaflet with smooth scrolling
-import "./SmoothScroll";
-import { polygon } from "leaflet";
+import "./SmoothScroll.js";
+
 import { FeatureLayer } from "react-esri-leaflet";
 
 import Airtable from "airtable";
 
 // constants
-const MAP_DB = "MapCache";
-const AGOL_ORG_HASH = "c5WwApDsDjRhIVkH";
-const GEOMETRY_STORE = "geometries";
-const mapboxBaseURL = "https://api.mapbox.com/";
 const zoomLevels = {
   country: 4,
   state: 8.5,
@@ -78,14 +74,17 @@ const Legend = styled.div`
 const LegendElement = styled.div`
   display: flex;
   flex-direction: row;
-  /* width: 100%;
-  height: 100%; */
+
+  &:hover {
+    color: ${(props) => (props.selectable ? "#C7004E" : "")};
+  }
+  cursor: ${(props) => (props.selectable ? "pointer" : "auto")};
 `;
 
 const LegendWrapper = styled.div`
   margin-top: 1rem;
   overflow-y: scroll;
-  height: 85%;
+  height: calc(100% - 4rem);
 `;
 
 const LegendText = styled.div`
@@ -124,7 +123,7 @@ const RightSidebar = styled.div`
 `;
 
 const SidebarTop = styled.div`
-  height: 70%;
+  height: 65%;
   border-style: solid;
   border-color: rgba(225, 225, 225, 1);
   border-width: 0 0 2px 0;
@@ -132,7 +131,7 @@ const SidebarTop = styled.div`
 `;
 const SidebarBottom = styled.div`
   background-color: rgba(250, 250, 250, 1);
-  height: 30%;
+  height: 35%;
   padding: 1rem 1.5rem;
   color: rgba(175, 175, 175, 1);
   display: flex;
@@ -149,7 +148,7 @@ const SidebarBottomList = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: start;
   color: #0b1618;
 `;
 
@@ -173,11 +172,17 @@ const SidebarBottomLine = styled.div`
 
 const SidebarBottomLeft = styled.div`
   float: left;
-  color: rgba(200, 200, 200, 1);
+  color: rgba(160, 160, 160, 1);
+  width: 40%;
 `;
 
 const SidebarBottomRight = styled.div`
   float: right;
+  overflow: hidden;
+
+  overflow-y: ${(props) => (props.wrap ? "scroll" : "hidden")};
+  white-space: ${(props) => (props.wrap ? "normal" : "nowrap")};
+  text-overflow: ellipsis;
 `;
 
 const SideBarTitle = styled.h4`
@@ -190,208 +195,6 @@ const SideBarTitle = styled.h4`
   color: #f2f5ff;
   padding: 0.7rem 0.7rem;
 `;
-
-// UTILS
-
-/*
- * Utility function for obtaining OAuth token for use with an ArcGIS Feature Service
- *
- * Usage example:
- *   useEffect(() => {
- *     if (!token || Date.now() - tokenTime > 3600) {
- *       const getToken = async () => {
- *         const token = await authenticateEsriFromEnv();
- *         setToken(token);
- *         setTokenTime(Date.now());
- *       };
- *       getToken();
- *     }
- *   }, [token, tokenTime]);
- *
- */
-export const authenticateEsriFromEnv = async () => {
-  const clientId = process.env.REACT_APP_AGOL_CLIENT_ID;
-  const clientSecret = process.env.REACT_APP_AGOL_CLIENT_SECRET;
-  const expiration = 3600;
-
-  if (clientId == null || clientSecret == null) {
-    console.error("Unable to authenticate with ArcGIS Online: no credentials provided");
-    return null;
-  }
-
-  return await authenticateEsri(clientId, clientSecret, expiration);
-};
-
-export const authenticateEsri = async (clientId, clientSecret, expiration = 3600) => {
-  const authservice = "https://www.arcgis.com/sharing/rest/oauth2/token";
-  const url = `${authservice}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials&expiration=${expiration}`;
-
-  let token;
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-    });
-    const responseJSON = await response.json();
-    token = responseJSON.access_token;
-  } catch (error) {
-    console.error("Unable to authenticate with ArcGIS Online:");
-    console.error(error);
-  }
-
-  return token;
-};
-
-const readFeatureCollection = async (cacheKey) => {
-  const mapDB = await openDB(MAP_DB, 2, {
-    upgrade(db, oldVersion, newVersion, transaction, event) {
-      // Geometries are stored as GeoJSON FeatureCollection with a "name" property at the root level
-      // The "name" corresponds to the layer name in AGOL
-      const objectStore = db.createObjectStore(GEOMETRY_STORE, { keyPath: "name" });
-
-      objectStore.createIndex("name", "name", { unique: true });
-    },
-    blocked(currentVersion, blockedVersion, event) {
-      // TODO?
-    },
-    blocking(currentVersion, blockedVersion, event) {
-      // TODO?
-    },
-    terminated() {
-      // TODO?
-    },
-  });
-  const store = mapDB.transaction(GEOMETRY_STORE).objectStore(GEOMETRY_STORE);
-  const polygons = await store.get(cacheKey);
-  return polygons;
-};
-
-const writeFeatureCollection = async (featureCollection) => {
-  const mapDB = await openDB(MAP_DB, 2, {
-    upgrade(db, oldVersion, newVersion, transaction, event) {
-      // Geometries are stored as GeoJSON FeatureCollection with a "name" property at the root level
-      // The "name" corresponds to the layer name in AGOL
-      const objectStore = db.createObjectStore(GEOMETRY_STORE, { keyPath: "name" });
-
-      objectStore.createIndex("name", "name", { unique: true });
-    },
-    blocked(currentVersion, blockedVersion, event) {
-      // TODO
-    },
-    blocking(currentVersion, blockedVersion, event) {
-      // TODO
-    },
-    terminated() {
-      // TODO
-    },
-  });
-  const store = mapDB.transaction(GEOMETRY_STORE, "readwrite").objectStore(GEOMETRY_STORE);
-  await store.put(featureCollection);
-};
-
-export const getAGOLLayerURL = (serviceName, layerID = null) => {
-  // TODO: separate layer from service
-  // TODO: gracefully handle no matching layer name
-  return `https://services.arcgis.com/${AGOL_ORG_HASH}/arcgis/rest/services/${serviceName}/FeatureServer/${layerID}`;
-};
-
-export const getCacheKey = (serviceName, layerKey) => {
-  return `${serviceName}-${layerKey}`;
-};
-
-/*
- * Utility function for querying geometries from an ArcGIS Feature Service
- *
- * Usage example:
- *   useEffect(() => {
- *     if (token != null && data == null) {
- *       const serviceName = MUNI_POLYGONS;
- *       queryFeatureService({token, serviceName}).then((polygons) => setData(polygons));
- *     }
- *   }, [token, data]);
- *
- */
-export const queryFeatureService = async ({ serviceName, token = null, layerID = null, layerName = null, count = null, force = false }) => {
-  const layerKey = layerName ? layerName : layerID;
-  const cacheKey = getCacheKey(serviceName, layerKey);
-  let featureCollection = await readFeatureCollection(cacheKey);
-  if (!force && featureCollection != null) {
-    // Return cached version if we have it
-    return featureCollection;
-  }
-
-  if (token == null) {
-    token = await authenticateEsriFromEnv();
-  }
-
-  if (layerID == null) {
-    const layerResponse = await fetch(
-      `https://services.arcgis.com/${AGOL_ORG_HASH}/ArcGIS/rest/services/${serviceName}/FeatureServer/layers?f=pjson&token=${token}`
-    );
-    const { layers } = await layerResponse.json();
-    if (layers.length === 1 && layerName == null) {
-      // If number of layers is 1, use that by default if no layerName is provided
-      layerID = layers[0].id;
-      layerName = layers[0].name;
-    } else if (layerName != null) {
-      // Otherwise, try to match layerName in list of available layers
-      layerID = layers.filter((l) => l.name == serviceName)[0];
-    }
-  }
-
-  // Only fetch new data from server if read from IndexedDB is not successful
-  featureCollection = {
-    type: "FeatureCollection",
-    name: cacheKey,
-    crs: { type: "name", properties: { name: "EPSG:4326" } },
-    features: [],
-  };
-
-  const layerURL = getAGOLLayerURL(serviceName, layerID);
-  if (count == null) {
-    const idURL = `${layerURL}/query?where=0=0&returnGeometry=false&f=pjson&token=${token}&returnIdsOnly=true`;
-    const idsResponse = await fetch(idURL);
-    // TODO: See if there's a way to do this with pbf
-    const idsJSON = await idsResponse.json();
-    const ids = idsJSON.objectIds;
-    count = ids.length;
-  }
-
-  const url = `${layerURL}/query?returnGeometry=true&outSR=4326&outFields=muni_id&f=pbf&token=${token}`;
-  let featuresList = [];
-  // TODO: Figure out better way to do chunk sizing that takes API limits into account (likely just institute a cap/max)
-  const chunkSize = Math.min(Math.ceil(count / 3), 10000);
-  const chunks = [...Array(Math.ceil(count / chunkSize)).keys()].map((n) => n * chunkSize);
-  const parts = await Promise.all(
-    chunks.map((c) =>
-      fetch(`${url}&where=ObjectId>${c} and ObjectId<=${c + chunkSize}`, {
-        cache: "force-cache",
-      })
-    )
-  );
-  const buffers = await Promise.all(parts.map((part) => part.arrayBuffer()));
-  featuresList = buffers.map((buff) => arcgisPbfDecode(new Uint8Array(buff)).featureCollection);
-  featureCollection.features = featuresList.reduce((acc, v, i) => {
-    return acc.concat(v.features);
-  }, []);
-
-  writeFeatureCollection(featureCollection);
-
-  return featureCollection;
-};
-
-/*
- * Utility function for querying point data from an AirTable base with lat/long columns
- *
- * Usage example:
- *   queryAirtableBase({
- *     baseID: "appIU7sOcjCrwiJZU",
- *     tableName: "State Subsidized Public Housing",
- *     fields: ["FID", "DevName", "Program", "Lat", "Long"],
- *     sortOptions: [{field: "FID", direction: "asc"}]
- *   }).then((points) => setPoints(points));
- *
- */
 
 const LoadingOverlay = styled.div`
   position: absolute;
@@ -407,11 +210,10 @@ const LoadingContainer = styled.div`
   right: calc(50% - 32.5px);
   height: 75px;
   width: 75px;
-  /* background-color: white; */
+
   display: flex;
   align-items: center;
   justify-content: center;
-  /* border: 2px solid rgba(0, 0, 0, 0.2); */
 `;
 
 const LoadingIndicator = styled(Spinner)``;
@@ -494,7 +296,6 @@ function setSimplifyFactor(zoom) {
 }
 
 // Hook to handle map events
-
 const LegendImages = [
   {
     src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAUklEQVQ4jWNhoDJgGTVwMIfh8mYHik2LrD3AwrC8uYGBkbGegRpgRcsBFqoZBgEOIzQdHgD5nSqm/f/fyMIQUeNIrSTDAPcylDNyIoWqYPAbCABWeRFT3pkxxQAAAABJRU5ErkJggg==",
@@ -595,7 +396,6 @@ const basemaps = {
 };
 
 export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoints = [], mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN }) => {
-  const [polygons, setPolygons] = useState([]);
   const [selectedFeature, setSelectedFeature] = useState();
   const [selectedType, setSelectedType] = useState();
   const [selectedProject, setSelectedProject] = useState();
@@ -616,6 +416,11 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
   const [showDesignConstruction, setShowDesignConstruction] = useState(true);
   const [showEnvisioned, setShowEnvisioned] = useState(true);
   const [featureQuery, setFeatureQuery] = useState("1=1");
+
+  const negativeFeatureQuery =
+    "(seg_type = 1 AND fac_stat =2 OR seg_type = 2 OR seg_type = 3 AND fac_stat = 2 OR seg_type = 3 AND fac_stat = 3 OR seg_type = 4 AND fac_stat = 1 OR seg_type = 4 AND fac_stat = 3 OR seg_type = 12)";
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const pathWeight = 3.5 * (10.0 / zoom);
 
@@ -659,43 +464,14 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
       );
   }, []);
 
-  useEffect(() => {
-    const loadPolygons = async () => {
-      // constants and feature query setup
-      const clientId = process.env.REACT_APP_AGOL_CLIENT_ID;
-      const clientSecret = process.env.REACT_APP_AGOL_CLIENT_SECRET;
-      const token = await authenticateEsri(clientId, clientSecret);
-      const serviceName = "simplified_muni_polygons_2";
-      const polygonData = await queryFeatureService({ token, serviceName, force: true });
-
-      setPolygons([
-        {
-          id: "muni-polygons",
-          styleFunction: () => {
-            return {
-              fillColor: "#69bbf6",
-              color: "#219af1",
-              weight: 0.8,
-              fillOpacity: 0.5,
-              opacity: 0.5,
-              zIndex: -1,
-            };
-          },
-          data: polygonData.features,
-        },
-      ]);
-    };
-    loadPolygons();
-  }, []);
-
   let focusProps = regionMapProps; // Default: MAPC regional map
   if (mapFocus === "state") {
     focusProps = stateMapProps;
   }
 
   let layers = [];
-  // TODO: provide options for indicating "blocking" vs "non-blocking" layers
-  if (polygons.length == 0 && Object.keys(projectList).length == 0) {
+  // show loading indicator on loading any layer or loading CMS data
+  if (Object.keys(projectList).length == 0 || isLoading) {
     layers = [
       <LoadingOverlay>
         <LoadingContainer>
@@ -707,29 +483,25 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
     ];
   }
 
-  // if (polygons.length > 0) {
-  //   for (let polyConfig of polygons) {
-  //     // TODO: Set up default polygon colors in constants
-  //     layers.push(<GeoJSON id={polyConfig.id} key={polyConfig.id} data={polyConfig.data} style={polyConfig.styleFunction} />);
-  //   }
-  // }
-
+  // on project selection, set current project state, clear feature state to remove ambiguity and reduce confusion
   function handleProjectClick(feature) {
     setSelectedProject(feature.target.options.name);
     setSelectedFeature();
+    setSelectedType();
     setLastSelected("project");
   }
 
   function handleProjectSelect(project) {
     setSelectedProject(project);
     setSelectedFeature();
+    setSelectedType();
     setLastSelected("project");
   }
 
   if (Object.keys(projectList).length > 0 && showProjects) {
+    // render all points from Airtable CMS point layer base ( CMS - Landlines )
     for (let projectName of Object.keys(projectList)) {
       const point = projectList[projectName];
-      // TODO: Set up default point colors in constants
       if (point.Lat != undefined && point.Long != undefined) {
         layers.push(
           <Circle
@@ -750,11 +522,13 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
   function handleFeatureClick(feature) {
     if (feature.layer.feature.properties) {
       setSelectedFeature(feature.layer.feature.properties);
+      setSelectedProject();
       setLastSelected("feature");
     }
   }
 
   useEffect(() => {
+    // map the selectedFeature's properties to determine feature type to display on data description
     function mapType() {
       if (selectedFeature == undefined) {
         return;
@@ -829,6 +603,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
   }, [selectedFeature]);
 
   useEffect(() => {
+    // generate where queries for featureLayer query
     const generateQuery = () => {
       const query = [];
 
@@ -843,7 +618,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
       }
 
       if (query.length > 0) {
-        return query.join(" OR ");
+        return "(" + query.join(" OR ") + ")";
       }
       return "0=1";
     };
@@ -866,6 +641,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           smoothWheelZoom={true} // enable smooth zoom
           smoothSensitivity={2.5} // zoom speed. default is 1
         >
+          {/* feature toggles */}
           <Form style={{ position: "absolute", width: "100%", left: "1rem", top: "1rem" }}>
             <StyledSwitch
               checked={showProjects}
@@ -916,7 +692,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-map" viewBox="0 0 16 16">
               <path
-                fill-rule="evenodd"
+                fillRule="evenodd"
                 d="M15.817.113A.5.5 0 0 1 16 .5v14a.5.5 0 0 1-.402.49l-5 1a.5.5 0 0 1-.196 0L5.5 15.01l-4.902.98A.5.5 0 0 1 0 15.5v-14a.5.5 0 0 1 .402-.49l5-1a.5.5 0 0 1 .196 0L10.5.99l4.902-.98a.5.5 0 0 1 .415.103M10 1.91l-4-.8v12.98l4 .8zm1 12.98 4-.8V1.11l-4 .8zm-6-.8V1.11l-4 .8v12.98z"
               />
             </svg>
@@ -960,22 +736,16 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
 
           <ZoomControl position="bottomright" />
           <ScaleControl position="bottomright" />
-          {/* <Legend>
-          {LegendImages.map((legend) => {
-            return (
-              <LegendElement>
-                <img src={legend.src} style={{ width: 30, height: 30 }} />
-                <LegendText>{legend.label}</LegendText>
-              </LegendElement>
-            );
-          })}
-        </Legend> */}
+
           <MapEventsHandler setZoom={setZoom} />
           <FeatureLayer
             url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+            key={featureQuery} //FORCE RELOAD ON QUERY CHANGE
             simplifyFactor={setSimplifyFactor(zoom)}
             eventHandlers={{
               click: handleFeatureClick,
+              loading: () => setIsLoading(true),
+              load: () => setIsLoading(false),
             }}
             where={featureQuery}
             style={(feature) => {
@@ -1036,7 +806,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           <FeatureLayer
             url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
             simplifyFactor={setSimplifyFactor(zoom)}
-            where={featureQuery}
+            where={featureQuery + " AND " + negativeFeatureQuery}
             style={(feature) => {
               let colorRow;
               let dashArray;
@@ -1078,21 +848,26 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
       </Wrapper>
       <RightSidebar>
         <SideBarTitle>
+          {/* sidebar title header */}
           <a href="https://www.mapc.org/transportation/landline/" style={{ position: "relative", color: "inherit", textDecoration: "none" }}>
             <img alt="MAPC logo" src={MAPCLogo} style={{ marginRight: "0.5rem", width: 90, height: "auto" }} />
             <span style={{ position: "relative", bottom: "-16px" }}>LandLine</span>
           </a>
         </SideBarTitle>
         <SidebarTop>
+          {/* tab selection */}
           <Nav justify variant="tabs" defaultActiveKey="landlines" onSelect={handleSelectTab}>
             <Nav.Item>
-              <Nav.Link eventKey="landlines">Landlines</Nav.Link>
+              <Nav.Link eventKey="landlines" style={{ height: "100%" }}>
+                Landlines
+              </Nav.Link>
             </Nav.Item>
             <Nav.Item>
               <Nav.Link eventKey="projects">Greenway Projects</Nav.Link>
             </Nav.Item>
           </Nav>
           <LegendWrapper>
+            {/* render selected tab */}
             {selectedTab == "landlines" ? (
               <>
                 {LegendImages.map((legend) => {
@@ -1123,6 +898,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                     onClick={() => {
                       handleProjectSelect(project);
                     }}
+                    selectable
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -1164,19 +940,19 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 <SidebarBottomTitle>Landline</SidebarBottomTitle>
                 <SidebarBottomLine>
                   <SidebarBottomLeft>Name:</SidebarBottomLeft>
-                  <SidebarBottomRight>{}</SidebarBottomRight>
+                  <SidebarBottomRight>{"N/A"}</SidebarBottomRight>
                 </SidebarBottomLine>
                 <SidebarBottomLine>
                   <SidebarBottomLeft>Type:</SidebarBottomLeft>
-                  <SidebarBottomRight>{selectedType}</SidebarBottomRight>
+                  <SidebarBottomRight>{selectedType ? selectedType : "N/A"}</SidebarBottomRight>
                 </SidebarBottomLine>
                 <SidebarBottomLine>
                   <SidebarBottomLeft>Project:</SidebarBottomLeft>
-                  <SidebarBottomRight>{selectedFeature.reg_name}</SidebarBottomRight>
+                  <SidebarBottomRight>{selectedFeature.reg_name ? selectedFeature.reg_name : "N/A"}</SidebarBottomRight>
                 </SidebarBottomLine>
                 <SidebarBottomLine>
                   <SidebarBottomLeft>Link:</SidebarBottomLeft>
-                  <SidebarBottomRight>{selectedProjectLink}</SidebarBottomRight>
+                  <SidebarBottomRight>{selectedProjectLink ? selectedProjectLink : "N/A"}</SidebarBottomRight>
                 </SidebarBottomLine>
               </SidebarBottomList>
             ) : (
@@ -1191,27 +967,33 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Latitude:</SidebarBottomLeft>
-                <SidebarBottomRight>{projectList[selectedProject].Lat}</SidebarBottomRight>
+                <SidebarBottomRight>{projectList[selectedProject].Lat ? projectList[selectedProject].Lat : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Longitude:</SidebarBottomLeft>
-                <SidebarBottomRight>{projectList[selectedProject].Long}</SidebarBottomRight>
+                <SidebarBottomRight>{projectList[selectedProject].Long ? projectList[selectedProject].Long : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Link:</SidebarBottomLeft>
                 <SidebarBottomRight>
-                  <a
-                    href={projectList[selectedProject].Link}
-                    target="_blank"
-                    style={{ overflowX: "ellipses", display: "block", textAlign: "end", width: "100%" }}
-                  >
-                    {projectList[selectedProject].Link}
-                  </a>
+                  {projectList[selectedProject].Link ? (
+                    <a
+                      href={projectList[selectedProject].Link}
+                      target="_blank"
+                      style={{ overflowX: "ellipses", display: "block", textAlign: "end", width: "100%" }}
+                    >
+                      {projectList[selectedProject].Link}
+                    </a>
+                  ) : (
+                    "N/A"
+                  )}
                 </SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Description:</SidebarBottomLeft>
-                <SidebarBottomRight>{projectList[selectedProject].Description}</SidebarBottomRight>
+                <SidebarBottomRight wrap>
+                  {projectList[selectedProject].Description ? projectList[selectedProject].Description : "N/A"}
+                </SidebarBottomRight>
               </SidebarBottomLine>
             </SidebarBottomList>
           ) : (
