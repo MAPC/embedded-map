@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-// import { openDB } from "idb";
+import { openDB } from "idb";
 
 import styled from "styled-components";
 
@@ -9,10 +9,10 @@ import Nav from "react-bootstrap/Nav";
 import Form from "react-bootstrap/Form";
 import Overlay from "react-bootstrap/Overlay";
 
-// import arcgisPbfDecode from "arcgis-pbf-parser";
+import arcgisPbfDecode from "arcgis-pbf-parser";
 
 import MAPCLogo from "./assets/mapc-semitransparent.svg";
-import { MapContainer, TileLayer, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl } from "react-leaflet";
+import { MapContainer, TileLayer, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl, useMap } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -25,6 +25,10 @@ import { FeatureLayer } from "react-esri-leaflet";
 import Airtable from "airtable";
 
 // constants
+const MAP_DB = "MapCache";
+const AGOL_ORG_HASH = "c5WwApDsDjRhIVkH";
+const GEOMETRY_STORE = "geometries";
+const mapboxBaseURL = "https://api.mapbox.com/";
 const zoomLevels = {
   country: 4,
   state: 8.5,
@@ -35,10 +39,10 @@ const zoomLevels = {
 };
 const stateMapProps = {
   center: [42.030590752172635, -71.82353838842278],
-  zoom: zoomLevels.state,
+  zoom: zoomLevels.region,
   zoomDelta: 0.25,
   maxZoom: zoomLevels.parcel,
-  minZoom: zoomLevels.country,
+  minZoom: zoomLevels.state,
   zoomSnap: 0.25,
 };
 
@@ -47,7 +51,7 @@ const regionMapProps = {
   zoom: zoomLevels.region,
   zoomDelta: 0.25,
   maxZoom: zoomLevels.parcel,
-  minZoom: zoomLevels.country,
+  minZoom: zoomLevels.state,
   zoomSnap: 0.25,
 };
 
@@ -240,7 +244,7 @@ const StyledSwitch = styled(Form.Check)`
   right: 2rem;
 
   cursor: pointer;
-  width: 14rem;
+  width: 13rem;
 `;
 
 const StyledBasemapButton = styled.div`
@@ -254,7 +258,7 @@ const StyledBasemapButton = styled.div`
   border-radius: 5px;
 
   padding: 0.75rem 0.75rem;
-  top: 13rem;
+  top: 16rem;
   right: 1rem;
   cursor: pointer;
 `;
@@ -283,6 +287,164 @@ const MapEventsHandler = ({ setZoom }) => {
     },
   });
   return null;
+};
+
+// UTILS
+export const createTileURL = (style = "light-v10", token = process.env.MAPBOX_TOKEN) => {
+  const params = new URLSearchParams();
+  params.set("access_token", token || "");
+  const stylePath = `styles/v1/mapbox/${style}/tiles/{z}/{x}/{y}/`;
+  return `${mapboxBaseURL}${stylePath}?${params}`;
+};
+
+export const authenticateEsriFromEnv = async () => {
+  const clientId = process.env.REACT_APP_AGOL_CLIENT_ID;
+  const clientSecret = process.env.REACT_APP_AGOL_CLIENT_SECRET;
+  const expiration = 3600;
+  if (clientId == null || clientSecret == null) {
+    console.error("Unable to authenticate with ArcGIS Online: no credentials provided");
+    return null;
+  }
+  return await authenticateEsri(clientId, clientSecret, expiration);
+};
+export const authenticateEsri = async (clientId, clientSecret, expiration = 3600) => {
+  const authservice = "https://www.arcgis.com/sharing/rest/oauth2/token";
+  const url = `${authservice}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials&expiration=${expiration}`;
+  let token;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+    });
+    const responseJSON = await response.json();
+    token = responseJSON.access_token;
+  } catch (error) {
+    console.error("Unable to authenticate with ArcGIS Online:");
+    console.error(error);
+  }
+  return token;
+};
+const readFeatureCollection = async (cacheKey) => {
+  const mapDB = await openDB(MAP_DB, 2, {
+    upgrade(db, oldVersion, newVersion, transaction, event) {
+      // Geometries are stored as GeoJSON FeatureCollection with a "name" property at the root level
+      // The "name" corresponds to the layer name in AGOL
+      const objectStore = db.createObjectStore(GEOMETRY_STORE, { keyPath: "name" });
+      objectStore.createIndex("name", "name", { unique: true });
+    },
+    blocked(currentVersion, blockedVersion, event) {
+      // TODO?
+    },
+    blocking(currentVersion, blockedVersion, event) {
+      // TODO?
+    },
+    terminated() {
+      // TODO?
+    },
+  });
+  const store = mapDB.transaction(GEOMETRY_STORE).objectStore(GEOMETRY_STORE);
+  const polygons = await store.get(cacheKey);
+  return polygons;
+};
+const writeFeatureCollection = async (featureCollection) => {
+  const mapDB = await openDB(MAP_DB, 2, {
+    upgrade(db, oldVersion, newVersion, transaction, event) {
+      // Geometries are stored as GeoJSON FeatureCollection with a "name" property at the root level
+      // The "name" corresponds to the layer name in AGOL
+      const objectStore = db.createObjectStore(GEOMETRY_STORE, { keyPath: "name" });
+      objectStore.createIndex("name", "name", { unique: true });
+    },
+    blocked(currentVersion, blockedVersion, event) {
+      // TODO
+    },
+    blocking(currentVersion, blockedVersion, event) {
+      // TODO
+    },
+    terminated() {
+      // TODO
+    },
+  });
+  const store = mapDB.transaction(GEOMETRY_STORE, "readwrite").objectStore(GEOMETRY_STORE);
+  await store.put(featureCollection);
+};
+export const getAGOLLayerURL = (serviceName, layerID = null) => {
+  // TODO: separate layer from service
+  // TODO: gracefully handle no matching layer name
+  return `https://services.arcgis.com/${AGOL_ORG_HASH}/arcgis/rest/services/${serviceName}/FeatureServer/${layerID}`;
+};
+export const getCacheKey = (serviceName, layerKey) => {
+  return `${serviceName}-${layerKey}`;
+};
+
+export const queryFeatureService = async ({ serviceName, token = null, layerID = null, layerName = null, count = null, force = false }) => {
+  const layerKey = layerName ? layerName : layerID;
+  const cacheKey = getCacheKey(serviceName, layerKey);
+  let featureCollection = await readFeatureCollection(cacheKey);
+  if (!force && featureCollection != null) {
+    // Return cached version if we have it
+    return featureCollection;
+  }
+  if (token == null) {
+    token = await authenticateEsriFromEnv();
+  }
+  if (layerID == null) {
+    const layerResponse = await fetch(
+      `https://services.arcgis.com/${AGOL_ORG_HASH}/ArcGIS/rest/services/${serviceName}/FeatureServer/layers?f=pjson&token=${token}`
+    );
+    const { layers } = await layerResponse.json();
+    if (layers.length === 1 && layerName == null) {
+      // If number of layers is 1, use that by default if no layerName is provided
+      layerID = layers[0].id;
+      layerName = layers[0].name;
+    } else if (layerName != null) {
+      // Otherwise, try to match layerName in list of available layers
+      layerID = layers.filter((l) => l.name == serviceName)[0];
+    }
+  }
+  // Only fetch new data from server if read from IndexedDB is not successful
+  featureCollection = {
+    type: "FeatureCollection",
+    name: cacheKey,
+    crs: { type: "name", properties: { name: "EPSG:4326" } },
+    features: [],
+  };
+  const layerURL = getAGOLLayerURL(serviceName, layerID);
+  if (count == null) {
+    const idURL = `${layerURL}/query?where=0=0&returnGeometry=false&f=pjson&token=${token}&returnIdsOnly=true`;
+    const idsResponse = await fetch(idURL);
+    // TODO: See if there's a way to do this with pbf
+    const idsJSON = await idsResponse.json();
+    const ids = idsJSON.objectIds;
+    count = ids.length;
+  }
+  const url = `${layerURL}/query?returnGeometry=true&outSR=4326&outFields=muni_id&f=pbf&token=${token}`;
+  let featuresList = [];
+  // TODO: Figure out better way to do chunk sizing that takes API limits into account (likely just institute a cap/max)
+  const chunkSize = Math.min(Math.ceil(count / 3), 10000);
+  const chunks = [...Array(Math.ceil(count / chunkSize)).keys()].map((n) => n * chunkSize);
+  const parts = await Promise.all(
+    chunks.map((c) =>
+      fetch(`${url}&where=ObjectId>${c} and ObjectId<=${c + chunkSize}`, {
+        cache: "force-cache",
+      })
+    )
+  );
+  const buffers = await Promise.all(parts.map((part) => part.arrayBuffer()));
+  featuresList = buffers.map((buff) => arcgisPbfDecode(new Uint8Array(buff)).featureCollection);
+  featureCollection.features = featuresList.reduce((acc, v, i) => {
+    return acc.concat(v.features);
+  }, []);
+  writeFeatureCollection(featureCollection);
+  return featureCollection;
+};
+
+const featureColors = {
+  sharedUse: "#00a884",
+  sharedUseUnimproved: "#c7d79e",
+  protectedBikeLane: "#0170ff",
+  bikeLane: "#73b2ff",
+  sharedStreet: "#d7c29e",
+  Gap: "#ffffcc",
+  footTrail: "#ffcccc",
 };
 
 // Hook to handle map events
@@ -332,60 +494,99 @@ const LegendImages = [
     label: "Shared Street - Envisioned",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAPElEQVQ4jWNhoDJgGTWQYsAygg38/7b+Pz6FjMKNjCQZSC3AMnQMZCQyjIg2kFqAhWomQcGogZQDqochAHmtBOfUu2ZZAAAAAElFTkSuQmCC",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#888888" stroke-width="8" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.Gap} stroke-width="7" />
+      </svg>
+    ),
     label: "Gap - Facility Type TBD",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAATElEQVQ4jWNhoDJgGTWQYsAyAg38H8LgwMDIUM/AwOBAoVkHGP4zNLJQyTAQADmMFmH4n6ERZDLVvMy4huEAmDNykg3DqIGUAqqHIQBHUQwTGnLlIQAAAABJRU5ErkJggg==",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} stroke-width="8" />
+      </svg>
+    ),
     label: "Foot Trail - Natural Surface",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAXklEQVQ4jWNhoDJgGTWQYsAygg38H8LggEsR4xqGA8h8bGoZoWoQLmRk2I/DPJDCAyiGYVfLiGoglQALnPWfwZEYDSCv/Q/BrZYFWSGxrsCnloWByoBl1ECKweAPQwBVthIAfgs3GwAAAABJRU5ErkJggg==",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} stroke-width="8" stroke-dasharray="12, 5" />
+      </svg>
+    ),
     label: "Foot Trail - Envisioned Natural Surface",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAW0lEQVQ4jWNhoDJgGTVwJIXh/zCGBkoMYlwF0Y9w4X+GesrcxoBqIONqBkaGwR2GIQwOlBjEuIbhAIqBDIwM+ylzGwMjuoGNDFQALOjRTjUDqQVYqGYSw4g1EADiDgtqdh0lnwAAAABJRU5ErkJggg==",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} stroke-width="10" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="white" stroke-width="3" />
+      </svg>
+    ),
     label: "Foot Trail - Roadway Section",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAcklEQVQ4je2QUQ5AMBAFZ2UPxh3cB9cRd8DJKkTQZIuGH9FJ9qd5O+k+5WU0Cf/UoSvJQyHpGKz3446smf2HQh/wzUFTiFDBJhVf6CiIxdHAMht6ddYZ1o5+qEPxu7jdYcZod9hSx/rWMwdT+BaahDxlAnsJHovF/s4/AAAAAElFTkSuQmCC",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} stroke-width="10" stroke-dasharray="12, 5" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="white" stroke-width="3" stroke-dasharray="12, 5" />
+      </svg>
+    ),
     label: "Foot Trail - Envisioned Roadway Section",
   },
 ];
 
 // map overlay to relevant basemap URLs
 const basemaps = {
-  "Esri.WorldTopoMap": {
+  "Topo -ESRI (Default)": {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
     attribution:
       "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community",
   },
-  "Stadia.AlidadeSmooth": {
-    url: "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",
-    attribution:
-      '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  },
-  "USGS.USImageryTopo": {
+  // "Stadia.AlidadeSmooth": {
+  //   url: "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",
+  //   attribution:
+  //     '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  // },
+  "Topo - USGS": {
     url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
     attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
   },
-  "USGS.USTopo": {
-    url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
-    attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
-  },
-  "CartoDB.VoyagerLabelsUnder": {
+  // "USGS.USTopo": {
+  //   url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+  //   attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
+  // },
+  "CartoDB Voyager": {
     url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png",
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
   },
-  "Esri.WorldImagery": {
+  "Imagery - ESRI": {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attribution:
       "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
   },
 };
 
+const CreateCustomPanes = () => {
+  const map = useMap();
+
+  useEffect(() => {
+    map.createPane("outlinePane");
+    map.getPane("outlinePane").style.zIndex = 400;
+    map.createPane("mainPane");
+    map.getPane("mainPane").style.zIndex = 500;
+    map.createPane("pointPane");
+    map.getPane("pointPane").style.zIndex = 600;
+  }, [map]);
+
+  return null;
+};
+
 export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoints = [], mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN }) => {
+  const [polygons, setPolygons] = useState([]);
   const [selectedFeature, setSelectedFeature] = useState();
   const [selectedType, setSelectedType] = useState();
   const [selectedProject, setSelectedProject] = useState();
@@ -401,19 +602,20 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
 
   const target = useRef(null);
   const [showBaseMaps, setShowBaseMaps] = useState(false);
-  const [selectedBasemap, setSelectedBasemap] = useState("Esri.WorldTopoMap");
+  const [selectedBasemap, setSelectedBasemap] = useState("Topo -ESRI (Default)");
 
+  const [showPolygons, setShowPolygons] = useState(true);
   const [showExisting, setShowExisting] = useState(true);
   const [showDesignConstruction, setShowDesignConstruction] = useState(true);
   const [showEnvisioned, setShowEnvisioned] = useState(true);
   const [featureQuery, setFeatureQuery] = useState("1=1");
 
   const negativeFeatureQuery =
-    "(seg_type = 1 AND fac_stat =2 OR seg_type = 2 OR seg_type = 3 AND fac_stat = 2 OR seg_type = 3 AND fac_stat = 3 OR seg_type = 4 AND fac_stat = 1 OR seg_type = 4 AND fac_stat = 3 OR seg_type = 12)";
+    "(seg_type = 1 AND fac_stat =2 OR seg_type = 2 OR seg_type = 3 AND fac_stat = 2 OR seg_type = 3 AND fac_stat = 3 OR seg_type = 4 AND fac_stat = 1 OR seg_type = 4 AND fac_stat = 3 OR seg_type = 12 OR seg_type = 9)";
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const pathWeight = 3.5 * (10.0 / zoom);
+  let pathWeight = 3.5 * (10.0 / zoom);
 
   useEffect(() => {
     // AIRTABLE CMS
@@ -462,7 +664,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
 
   let layers = [];
   // show loading indicator on loading any layer or loading CMS data
-  if (Object.keys(projectList).length == 0 || isLoading) {
+  if (Object.keys(projectList).length == 0 || isLoading || (showPolygons && polygons.length == 0)) {
     layers = [
       <LoadingOverlay>
         <LoadingContainer>
@@ -472,6 +674,43 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
         </LoadingContainer>
       </LoadingOverlay>,
     ];
+  }
+
+  useEffect(() => {
+    const loadPolygons = async () => {
+      // constants and feature query setup
+      const clientId = process.env.REACT_APP_AGOL_CLIENT_ID;
+      const clientSecret = process.env.REACT_APP_AGOL_CLIENT_SECRET;
+      const token = await authenticateEsri(clientId, clientSecret);
+      const serviceName = "simplified_muni_polygons_2";
+      const polygonData = await queryFeatureService({ token, serviceName, force: true });
+      setPolygons([
+        {
+          id: "muni-polygons",
+          styleFunction: () => {
+            return {
+              fillColor: "#69bbf6",
+              color: "#219af1",
+              weight: 1.25,
+              fillOpacity: 0.0,
+              opacity: 0.6,
+              zIndex: -1000,
+            };
+          },
+          data: polygonData.features,
+        },
+      ]);
+    };
+    if (showPolygons) {
+      loadPolygons();
+    }
+  }, []);
+
+  if (polygons.length > 0 && showPolygons) {
+    for (let polyConfig of polygons) {
+      // TODO: Set up default polygon colors in constants
+      layers.push(<GeoJSON id={polyConfig.id} key={polyConfig.id} data={polyConfig.data} interactive={false} style={polyConfig.styleFunction} />);
+    }
   }
 
   // on project selection, set current project state, clear feature state to remove ambiguity and reduce confusion
@@ -499,11 +738,12 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
             key={projectName}
             name={projectName}
             pathOptions={{ color: projectName == selectedProject ? "red" : "blue", fillOpacity: "100%" }}
-            radius={12500 / (zoom * 3)}
+            radius={90000 / Math.pow(zoom - 2, 2.6)}
             center={[point.Lat, point.Long]}
             eventHandlers={{
               click: handleProjectClick,
             }}
+            pane="pointPane"
           />
         );
       }
@@ -643,6 +883,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           smoothWheelZoom={true} // enable smooth zoom
           smoothSensitivity={2.5} // zoom speed. default is 1
         >
+          <CreateCustomPanes />
           {/* feature toggles */}
           <Form style={{ position: "absolute", width: "100%", left: "1rem", top: "1rem" }}>
             <StyledSwitch
@@ -652,7 +893,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               }}
               type="switch"
               id="custom-switch"
-              label="Toggle Projects"
+              label="Toggle Active Projects"
               style={{ top: "0rem" }}
             />
             <StyledSwitch
@@ -662,7 +903,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               }}
               type="switch"
               id="custom-switch"
-              label="Existing Landline"
+              label="Existing Greenways"
               style={{ top: "3rem" }}
             />
             <StyledSwitch
@@ -672,9 +913,10 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               }}
               type="switch"
               id="custom-switch"
-              label="Design/Construction Landline"
+              label="In Design or Construction"
               style={{ top: "6rem" }}
             />
+
             <StyledSwitch
               checked={showEnvisioned}
               onChange={() => {
@@ -682,8 +924,18 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               }}
               type="switch"
               id="custom-switch"
-              label="Envisioned Landline"
+              label="Envisioned"
               style={{ top: "9rem" }}
+            />
+            <StyledSwitch
+              checked={showPolygons}
+              onChange={() => {
+                setShowPolygons(!showPolygons);
+              }}
+              type="switch"
+              id="custom-switch"
+              label="Municipal Boundaries"
+              style={{ top: "12rem" }}
             />
           </Form>
           <StyledBasemapButton
@@ -740,6 +992,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           <ScaleControl position="bottomright" />
 
           <MapEventsHandler setZoom={setZoom} />
+          {layers}
           <FeatureLayer
             url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
             key={featureQuery} //FORCE RELOAD ON QUERY CHANGE
@@ -754,40 +1007,39 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               let dashArray;
 
               if (feature.properties.seg_type == 1) {
-                colorRow = "#00a884";
+                colorRow = featureColors.sharedUse;
               }
               if (feature.properties.seg_type == 1 && feature.properties.fac_stat == 3) {
-                colorRow = "#00a884";
+                colorRow = featureColors.sharedUse;
                 dashArray = "3,8";
               } else if (feature.properties.seg_type == 6) {
-                colorRow = "#c7d79e";
+                colorRow = featureColors.sharedUseUnimproved;
               } else if (feature.properties.seg_type == 2) {
-                colorRow = "#0170ff";
+                colorRow = featureColors.protectedBikeLane;
               } else if (feature.properties.seg_type == 3) {
-                colorRow = "#73b2ff";
+                colorRow = featureColors.bikeLane;
               } else if (feature.properties.seg_type == 4 || feature.properties.seg_type == 5) {
-                colorRow = "#d7c29e";
+                colorRow = featureColors.sharedStreet;
               }
               if (feature.properties.seg_type == 5 && feature.properties.fac_stat == 3) {
-                colorRow = "#d7c29e";
+                colorRow = featureColors.sharedStreet;
                 dashArray = "3,8";
               } else if (
                 feature.properties.seg_type == 9 &&
                 (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
               ) {
-                colorRow = "#ffed7f";
-                dashArray = "3,8";
+                colorRow = "#888888";
               } else if (feature.properties.seg_type == 11) {
-                colorRow = "#ff5b0a";
+                colorRow = feature.footTrail;
               }
               if (feature.properties.seg_type == 11 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
-                colorRow = "#ff5b0a";
+                colorRow = feature.footTrail;
                 // dashArray = "3,8";
               }
               if (feature.properties.seg_type == 12) {
-                colorRow = "#ff732d";
+                colorRow = featureColors.footTrail;
               } else if (feature.properties.seg_type == 12 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
-                colorRow = "#ff732d";
+                colorRow = featureColors.footTrail;
                 dashArray = "3,8";
               }
 
@@ -799,9 +1051,10 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 opacity: 1,
                 dashArray: dashArray,
                 dashOffset: "0",
+                zIndex: 1000,
               };
             }}
-            pane="tilePane"
+            pane="outlinePane"
           />
           {/* inverted dash extra layer */}
           <FeatureLayer
@@ -811,6 +1064,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
             style={(feature) => {
               let colorRow;
               let dashArray;
+              pathWeight = 3.5 * (10.0 / zoom);
 
               if (feature.properties.seg_type == 1 && feature.properties.fac_stat == 2) {
                 colorRow = "white";
@@ -832,6 +1086,12 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 colorRow = "white";
               }
 
+              if (feature.properties.seg_type == 9) {
+                colorRow = featureColors.Gap;
+                pathWeight = 3.5 * (10.0 / zoom) + 1.0;
+                // dashArray = "3,8";
+              }
+
               return {
                 color: colorRow,
                 stroke: colorRow,
@@ -840,11 +1100,11 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 opacity: 1,
                 dashArray: dashArray,
                 dashOffset: "0",
+                zIndex: 1001,
               };
             }}
-            pane="tilePane"
+            pane="mainPane"
           />
-          {layers}
         </MapContainer>
       </Wrapper>
       <RightSidebar>
@@ -852,7 +1112,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           {/* sidebar title header */}
           <a href="https://www.mapc.org/transportation/landline/" style={{ position: "relative", color: "inherit", textDecoration: "none" }}>
             <img alt="MAPC logo" src={MAPCLogo} style={{ marginRight: "0.5rem", width: 90, height: "auto" }} />
-            <span style={{ position: "relative", bottom: "-16px" }}>LandLine</span>
+            <span style={{ position: "relative", bottom: "-16px" }}>LandLine Map</span>
           </a>
         </SideBarTitle>
         <SidebarTop>
@@ -860,11 +1120,11 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           <Nav justify variant="tabs" defaultActiveKey="landlines" onSelect={handleSelectTab}>
             <Nav.Item>
               <Nav.Link eventKey="landlines" style={{ height: "100%" }}>
-                Landlines
+                Landline Greenways
               </Nav.Link>
             </Nav.Item>
             <Nav.Item>
-              <Nav.Link eventKey="projects">Greenway Projects</Nav.Link>
+              <Nav.Link eventKey="projects">Active Projects</Nav.Link>
             </Nav.Item>
           </Nav>
           <LegendWrapper>
@@ -874,7 +1134,8 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 {LegendImages.map((legend) => {
                   return (
                     <LegendElement>
-                      <img src={legend.src} style={{ width: 30, height: 30 }} />
+                      {typeof legend.src === "string" ? <img src={legend.src} style={{ width: 30, height: 30 }} /> : legend.src}
+
                       {legend.label == selectedType ? <LegendTextStrong>{legend.label}</LegendTextStrong> : <LegendText>{legend.label}</LegendText>}
                     </LegendElement>
                   );
