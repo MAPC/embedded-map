@@ -508,7 +508,7 @@ const LegendImages = [
         <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} stroke-width="8" />
       </svg>
     ),
-    label: "Foot Trail - Natural Surface",
+    label: "Foot Trail - Existing",
   },
   {
     src: (
@@ -516,31 +516,13 @@ const LegendImages = [
         <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} stroke-width="8" stroke-dasharray="12, 5" />
       </svg>
     ),
-    label: "Foot Trail - Envisioned Natural Surface",
-  },
-  {
-    src: (
-      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} stroke-width="10" />
-        <line x1="0" y1="15" x2="30" y2="15" stroke="white" stroke-width="3" />
-      </svg>
-    ),
-    label: "Foot Trail - Roadway Section",
-  },
-  {
-    src: (
-      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} stroke-width="10" stroke-dasharray="12, 5" />
-        <line x1="0" y1="15" x2="30" y2="15" stroke="white" stroke-width="3" stroke-dasharray="12, 5" />
-      </svg>
-    ),
-    label: "Foot Trail - Envisioned Roadway Section",
+    label: "Foot Trail - Envisioned",
   },
 ];
 
 // map overlay to relevant basemap URLs
 const basemaps = {
-  "Topo -ESRI (Default)": {
+  "Topo - ESRI (Default)": {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
     attribution:
       "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community",
@@ -550,14 +532,14 @@ const basemaps = {
   //   attribution:
   //     '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   // },
-  "Topo - USGS": {
-    url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
-    attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
-  },
-  // "USGS.USTopo": {
-  //   url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+  // "Topo - USGS": {
+  //   url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
   //   attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
   // },
+  "Topo - USGS": {
+    url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+    attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
+  },
   "CartoDB Voyager": {
     url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png",
     attribution:
@@ -602,7 +584,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
 
   const target = useRef(null);
   const [showBaseMaps, setShowBaseMaps] = useState(false);
-  const [selectedBasemap, setSelectedBasemap] = useState("Topo -ESRI (Default)");
+  const [selectedBasemap, setSelectedBasemap] = useState("Topo - ESRI (Default)");
 
   const [showPolygons, setShowPolygons] = useState(true);
   const [showExisting, setShowExisting] = useState(true);
@@ -615,7 +597,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
 
   const [isLoading, setIsLoading] = useState(true);
 
-  let pathWeight = 3.5 * (10.0 / zoom);
+  let pathWeight = 4.0 * (10.0 / zoom);
 
   useEffect(() => {
     // AIRTABLE CMS
@@ -690,7 +672,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           styleFunction: () => {
             return {
               fillColor: "#69bbf6",
-              color: "#219af1",
+              color: "#666666",
               weight: 1.25,
               fillOpacity: 0.0,
               opacity: 0.6,
@@ -802,16 +784,16 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
         type = "Gap - Facility Type TBD";
       }
       if (selectedFeature.seg_type == 11 && selectedFeature.fac_stat == 1) {
-        type = "Foot Trail - Natural Surface";
+        type = "Foot Trail - Existing";
       }
       if (selectedFeature.seg_type == 11 && (selectedFeature.fac_stat == 2 || selectedFeature.fac_stat == 3)) {
-        type = "Foot Trail - Envisioned Natural Surface";
+        type = "Foot Trail - Envisioned";
       }
       if (selectedFeature.seg_type == 12 && selectedFeature.fac_stat == 1) {
-        type = "Foot Trail - Roadway Section";
+        type = "Foot Trail - Existing";
       }
       if (selectedFeature.seg_type == 12 && (selectedFeature.fac_stat == 2 || selectedFeature.fac_stat == 3)) {
-        type = "Foot-Trail - Envisioned Roadway Section";
+        type = "Foot-Trail - Envisioned";
       }
 
       setSelectedType(type);
@@ -986,7 +968,13 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
             )}
           </Overlay>
 
-          <TileLayer url={basemaps[selectedBasemap].url} attribution={basemaps[selectedBasemap].attribution} tileSize={512} zoomOffset={-1} />
+          <TileLayer
+            key={selectedBasemap}
+            url={basemaps[selectedBasemap].url}
+            attribution={basemaps[selectedBasemap].attribution}
+            tileSize={512}
+            zoomOffset={-1}
+          />
 
           <ZoomControl position="bottomright" />
           <ScaleControl position="bottomright" />
@@ -1029,14 +1017,15 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
               ) {
                 colorRow = "#888888";
-              } else if (feature.properties.seg_type == 11) {
-                colorRow = feature.footTrail;
               }
-              if (feature.properties.seg_type == 11 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
-                colorRow = feature.footTrail;
-                // dashArray = "3,8";
+
+              if (feature.properties.seg_type == 11 && feature.properties.fac_stat == 1) {
+                colorRow = featureColors.footTrail;
+              } else if (feature.properties.seg_type == 11 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
+                colorRow = featureColors.footTrail;
+                dashArray = "3,8";
               }
-              if (feature.properties.seg_type == 12) {
+              if (feature.properties.seg_type == 12 && feature.properties.fac_stat == 1) {
                 colorRow = featureColors.footTrail;
               } else if (feature.properties.seg_type == 12 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 2)) {
                 colorRow = featureColors.footTrail;
@@ -1079,11 +1068,6 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 dashArray = "3,8";
               } else if (feature.properties.seg_type == 4 && (feature.properties.fac_stat == 3 || feature.properties.fac_stat == 1)) {
                 colorRow = "white";
-              } else if (
-                feature.properties.seg_type == 12 &&
-                (feature.properties.fac_stat == 1 || feature.properties.fac_stat == 2 || feature.properties.fac_stat == 3)
-              ) {
-                colorRow = "white";
               }
 
               if (feature.properties.seg_type == 9) {
@@ -1095,7 +1079,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               return {
                 color: colorRow,
                 stroke: colorRow,
-                weight: pathWeight - 2.0,
+                weight: pathWeight,
                 fillOpacity: 0,
                 opacity: 1,
                 dashArray: dashArray,
