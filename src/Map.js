@@ -376,6 +376,7 @@ export const getCacheKey = (serviceName, layerKey) => {
 };
 
 export const queryFeatureService = async ({ serviceName, token = null, layerID = null, layerName = null, count = null, force = false }) => {
+
   const layerKey = layerName ? layerName : layerID;
   const cacheKey = getCacheKey(serviceName, layerKey);
   let featureCollection = await readFeatureCollection(cacheKey);
@@ -527,15 +528,6 @@ const basemaps = {
     attribution:
       "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community",
   },
-  // "Stadia.AlidadeSmooth": {
-  //   url: "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",
-  //   attribution:
-  //     '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  // },
-  // "Topo - USGS": {
-  //   url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
-  //   attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
-  // },
   "Topo - USGS": {
     url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
     attribution: 'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
@@ -590,7 +582,9 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
   const [showExisting, setShowExisting] = useState(true);
   const [showDesignConstruction, setShowDesignConstruction] = useState(true);
   const [showEnvisioned, setShowEnvisioned] = useState(true);
+  const [showGaps, setShowGaps] = useState(false);
   const [featureQuery, setFeatureQuery] = useState("1=1");
+  const [featureLayerKey, setFeatureLayerKey] = useState(0);
 
   const negativeFeatureQuery =
     "(seg_type = 1 AND fac_stat =2 OR seg_type = 2 OR seg_type = 3 AND fac_stat = 2 OR seg_type = 3 AND fac_stat = 3 OR seg_type = 4 AND fac_stat = 1 OR seg_type = 4 AND fac_stat = 3 OR seg_type = 12 OR seg_type = 9)";
@@ -733,6 +727,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
   }
 
   function handleFeatureClick(feature) {
+    
     if (feature.layer.feature.properties) {
       setSelectedFeature(feature.layer.feature.properties);
       setSelectedProject();
@@ -818,15 +813,16 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
   useEffect(() => {
     // generate where queries for featureLayer query
     const generateQuery = () => {
+      
       const query = [];
 
-      if (showExisting) {
+      if (showExisting || showGaps) {
         query.push("fac_stat = 1");
       }
       if (showDesignConstruction) {
         query.push("fac_stat = 2");
       }
-      if (showEnvisioned) {
+      if (showEnvisioned || showGaps) {
         query.push("fac_stat = 3");
       }
 
@@ -834,11 +830,14 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
         return "(" + query.join(" OR ") + ")";
       }
       return "0=1";
-    };
 
+      
+    };
+   
     setFeatureQuery(generateQuery);
     setIsLoading(true);
-  }, [showEnvisioned, showDesignConstruction, showExisting]);
+    setFeatureLayerKey(prevKey => prevKey + 1); 
+  }, [showEnvisioned, showDesignConstruction, showExisting, showGaps]);
 
   useEffect(() => {
     if (simplifyFactor != 0.5 && zoom >= 10) {
@@ -909,6 +908,19 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               label="Envisioned"
               style={{ top: "9rem" }}
             />
+
+            <StyledSwitch
+                checked={showGaps}
+                onChange={() => {
+                  setShowGaps(!showGaps);
+                }}
+                type="switch"
+                id="custom-switch-gaps"
+                label="Show Gap Features"
+                style={{ top: "15rem" }}
+              />
+            
+
             <StyledSwitch
               checked={showPolygons}
               onChange={() => {
@@ -983,7 +995,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           {layers}
           <FeatureLayer
             url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
-            key={featureQuery} //FORCE RELOAD ON QUERY CHANGE
+            key={`${featureQuery}-${featureLayerKey}`} //FORCE RELOAD ON QUERY CHANGE
             simplifyFactor={simplifyFactor}
             eventHandlers={{
               click: handleFeatureClick,
@@ -1032,6 +1044,33 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 dashArray = "3,8";
               }
 
+              if (showGaps && !showEnvisioned) {
+                if (feature.properties.seg_type === 9) {
+                  colorRow = '#FF0000'; 
+                }else{
+                  colorRow = "#4f1a32"; // other non gap map
+                }
+                return {
+                  color: colorRow,
+                  weight: pathWeight,
+                  fillOpacity: 0,
+                  opacity: 1,
+                  zIndex: 1000,
+                };
+                
+              } else if (showGaps && showEnvisioned || !showGaps && showEnvisioned ) {
+                if (feature.properties.seg_type === 9) {
+                  return {
+                    color: featureColors.Gap, // Yellow for gap features when both showGaps and showEnvisioned are true
+                    weight: pathWeight,
+                    fillOpacity: 0,
+                    opacity: 1,
+                    zIndex: 1000,
+                  };
+                }
+              }
+              
+
               return {
                 color: colorRow,
                 stroke: colorRow,
@@ -1070,12 +1109,31 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 colorRow = "white";
               }
 
-              if (feature.properties.seg_type == 9) {
-                colorRow = featureColors.Gap;
-                pathWeight = 3.5 * (10.0 / zoom) + 1.0;
-                // dashArray = "3,8";
+              if (showGaps && !showEnvisioned) {
+                if (feature.properties.seg_type === 9) {
+                  colorRow = '#FF0000'; 
+                }else{
+                  colorRow = "#4f1a32"; // other non gap map
+                }
+                return {
+                  color: colorRow,
+                  weight: pathWeight,
+                  fillOpacity: 0,
+                  opacity: 1,
+                  zIndex: 1001,
+                };
+                
+              } else if (showGaps && showEnvisioned || !showGaps && showEnvisioned ) {
+                if (feature.properties.seg_type === 9) {
+                  return {
+                    color: featureColors.Gap, // Yellow for gap features when both showGaps and showEnvisioned are true
+                    weight: pathWeight,
+                    fillOpacity: 0,
+                    opacity: 1,
+                    zIndex: 1001,
+                  };
+                }
               }
-
               return {
                 color: colorRow,
                 stroke: colorRow,
