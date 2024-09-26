@@ -1043,34 +1043,14 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 colorRow = featureColors.footTrail;
                 dashArray = "3,8";
               }
-
+              let isGapFeature = feature.properties.seg_type === 9;
               if (showGaps && !showEnvisioned) {
-                if (feature.properties.seg_type === 9) {
-                  colorRow = '#FF0000'; 
-                }else{
-                  colorRow = "#4f1a32"; // other non gap map
-                }
-                return {
-                  color: colorRow,
-                  weight: pathWeight,
-                  fillOpacity: 0,
-                  opacity: 1,
-                  zIndex: 1000,
-                };
-                
-              } else if (showGaps && showEnvisioned || !showGaps && showEnvisioned ) {
-                if (feature.properties.seg_type === 9) {
-                  return {
-                    color: featureColors.Gap, // Yellow for gap features when both showGaps and showEnvisioned are true
-                    weight: pathWeight,
-                    fillOpacity: 0,
-                    opacity: 1,
-                    zIndex: 1000,
-                  };
-                }
+                colorRow = isGapFeature ? '#FF0000' : '#4f1a32'; // Red for gap, default for non-gap when showing gap features only
+              } else if (showEnvisioned) {
+                // Handle cases when Envisioned is shown
+                colorRow = isGapFeature ? featureColors.Gap : colorRow; // Yellow for gap if envisioned, keep previous color for non-gap
               }
               
-
               return {
                 color: colorRow,
                 stroke: colorRow,
@@ -1109,31 +1089,14 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
                 colorRow = "white";
               }
 
+              let isGapFeature = feature.properties.seg_type === 9;
               if (showGaps && !showEnvisioned) {
-                if (feature.properties.seg_type === 9) {
-                  colorRow = '#FF0000'; 
-                }else{
-                  colorRow = "#4f1a32"; // other non gap map
-                }
-                return {
-                  color: colorRow,
-                  weight: pathWeight,
-                  fillOpacity: 0,
-                  opacity: 1,
-                  zIndex: 1001,
-                };
-                
-              } else if (showGaps && showEnvisioned || !showGaps && showEnvisioned ) {
-                if (feature.properties.seg_type === 9) {
-                  return {
-                    color: featureColors.Gap, // Yellow for gap features when both showGaps and showEnvisioned are true
-                    weight: pathWeight,
-                    fillOpacity: 0,
-                    opacity: 1,
-                    zIndex: 1001,
-                  };
-                }
+                colorRow = isGapFeature ? '#FF0000' : '#4f1a32'; // Red for gap, default for non-gap when showing gap features only
+              } else if (showEnvisioned) {
+                // Handle cases when Envisioned is shown
+                colorRow = isGapFeature ? featureColors.Gap : colorRow; // Yellow for gap if envisioned, keep previous color for non-gap
               }
+              
               return {
                 color: colorRow,
                 stroke: colorRow,
