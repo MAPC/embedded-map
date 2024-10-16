@@ -2,11 +2,9 @@
   "name": "embedded-map",
   "version": "0.1.0",
   "homepage": "https://mapc.github.io/embedded-map",
+  "type": "module",
   "private": true,
   "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
     "airtable": "^0.12.2",
     "arcgis-pbf-parser": "^0.0.4",
     "bootstrap": "^5.3.3",
@@ -18,8 +16,7 @@
     "react-esri-leaflet": "^2.0.1",
     "react-leaflet": "^4.2.1",
     "react-scripts": "5.0.1",
-    "styled-components": "^6.1.11",
-    "web-vitals": "^2.1.4"
+    "styled-components": "^6.1.11"
   },
   "scripts": {
     "predeploy": "npm run build",
@@ -43,7 +40,11 @@
   },
   "devDependencies": {
     "@mapc/eslint-config": "^1.0.1",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
     "eslint": ">=9",
-    "gh-pages": "^6.1.1"
+    "gh-pages": "^6.1.1",
+    "prettier": "^3.3.3"
   }
 }
