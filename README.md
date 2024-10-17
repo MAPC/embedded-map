@@ -1,75 +1,25 @@
-# Getting Started with Create React App
+# Landline (Embedded Map)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Overview
 
-## Available Scripts
+LandLine is MAPC's vision to connect our greenways and trails into a seamless network. This project is a [Leaflet](https://leafletjs.com/) map that renders those trail networks and projects. We also track "gaps" in the trail network, in order to identify where we can invest in trail development to strengthen and improve the network.
 
-In the project directory, you can run:
+We use [Airtable](https://airtable.com/) (via [Airtable.js](https://github.com/Airtable/airtable.js)) as a lightweight [Content Management System (CMS)](https://en.wikipedia.org/wiki/Content_management_system) to serve trail project data, and the trail data is made available through an [ESRI](https://en.wikipedia.org/wiki/Esri) feature service.
 
-### `npm start`
+We use a combination of [styled-components](https://styled-components.com/) and [react-bootstrap](https://react-bootstrap.github.io/) for visual components of the map.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+[ESLint](https://eslint.org/) and [Prettier](https://prettier.io/) are configured for this project, using our organization's [shared ESLint config](https://github.com/MAPC/eslint-config) as a baseline.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Setup
 
-### `npm test`
+- Install dependencies with `yarn install`
+- Create `.env` file (environment variables can be found in Dashlane secure notes)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Development
 
-### `npm run build`
+After setting up the project, run the app locally ([http://localhost:3000](http://localhost:3000)) with `yarn start`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Deployment
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Environment Variables
-
-Remember to create .env file to add all API keys required for this project. Please go to Dashlane, under Secure Notes, you will see embedded-map .env to get all the required keys. 
-This project requires airtable api token, argis api token and mapbox api token.  
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Currently, there is no staging environment, just the [GitHub Pages site](https://mapc.github.io/embedded-map/) (which is embedded in the [Landline website](https://www.mapc.org/transportation/landline/)).
+To build and deploy the site, run `yarn deploy` locally, which will use the [gh-pages module](https://github.com/tschaub/gh-pages?tab=readme-ov-file#command-line-utility) to build the production bundle and copy it into the `gh-pages` branch, which is the branch served by [GitHub Pages](https://pages.github.com/).
