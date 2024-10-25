@@ -23,6 +23,8 @@ import "./SmoothScroll.js";
 import { FeatureLayer } from "react-esri-leaflet";
 
 import Airtable from "airtable";
+import LandlineGreenway from "./LandlineGreenway";
+
 
 // constants
 const MAP_DB = "MapCache";
@@ -931,6 +933,9 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               label="Municipal Boundaries"
               style={{ top: "12rem" }}
             />
+
+            
+
           </Form>
           <StyledBasemapButton
             ref={target}
@@ -1111,6 +1116,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
             pane="mainPane"
           />
         </MapContainer>
+        <LandlineGreenway style={{ zIndex: "10000000", position:'absolute'}}></LandlineGreenway>
       </Wrapper>
       <RightSidebar>
         <SideBarTitle>
@@ -1199,6 +1205,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
               })
             )}
           </LegendWrapper>
+         
         </SidebarTop>
         <SidebarBottom>
           {lastSelected == "feature" ? (
