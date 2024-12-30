@@ -1,8 +1,8 @@
 import styled from "styled-components";
 import Nav from "react-bootstrap/Nav";
 
-import Legend from "./Legend";
-import MAPCLogo from "./assets/mapc-semitransparent.svg";
+import Legend from "./Legend.jsx";
+import MAPCLogo from "../assets/mapc-semitransparent.svg";
 
 const RightSidebar = styled.div`
   display: flex;
@@ -113,24 +113,13 @@ const Sidebar = ({
             textDecoration: "none",
           }}
         >
-          <img
-            alt="MAPC logo"
-            src={MAPCLogo}
-            style={{ marginRight: "0.5rem", width: 90, height: "auto" }}
-          />
-          <span style={{ position: "relative", bottom: "-16px" }}>
-            LandLine Map
-          </span>
+          <img alt="MAPC logo" src={MAPCLogo} style={{ marginRight: "0.5rem", width: 90, height: "auto" }} />
+          <span style={{ position: "relative", bottom: "-16px" }}>LandLine Map</span>
         </a>
       </SideBarTitle>
       <SidebarTop>
         {/* tab selection */}
-        <Nav
-          justify
-          variant="tabs"
-          defaultActiveKey="landlines"
-          onSelect={handleSelectTab}
-        >
+        <Nav justify variant="tabs" defaultActiveKey="landlines" onSelect={handleSelectTab}>
           <Nav.Item>
             <Nav.Link eventKey="landlines" style={{ height: "100%" }}>
               Landline Greenways
@@ -159,21 +148,15 @@ const Sidebar = ({
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Type:</SidebarBottomLeft>
-                <SidebarBottomRight>
-                  {selectedType ? selectedType : "N/A"}
-                </SidebarBottomRight>
+                <SidebarBottomRight>{selectedType ? selectedType : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Project:</SidebarBottomLeft>
-                <SidebarBottomRight>
-                  {selectedFeature.reg_name ? selectedFeature.reg_name : "N/A"}
-                </SidebarBottomRight>
+                <SidebarBottomRight>{selectedFeature.reg_name ? selectedFeature.reg_name : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Link:</SidebarBottomLeft>
-                <SidebarBottomRight>
-                  {selectedProjectLink ? selectedProjectLink : "N/A"}
-                </SidebarBottomRight>
+                <SidebarBottomRight>{selectedProjectLink ? selectedProjectLink : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
             </SidebarBottomList>
           ) : (
@@ -188,19 +171,11 @@ const Sidebar = ({
             </SidebarBottomLine>
             <SidebarBottomLine>
               <SidebarBottomLeft>Latitude:</SidebarBottomLeft>
-              <SidebarBottomRight>
-                {projectList[selectedProject].Lat
-                  ? projectList[selectedProject].Lat
-                  : "N/A"}
-              </SidebarBottomRight>
+              <SidebarBottomRight>{projectList[selectedProject].Lat ? projectList[selectedProject].Lat : "N/A"}</SidebarBottomRight>
             </SidebarBottomLine>
             <SidebarBottomLine>
               <SidebarBottomLeft>Longitude:</SidebarBottomLeft>
-              <SidebarBottomRight>
-                {projectList[selectedProject].Long
-                  ? projectList[selectedProject].Long
-                  : "N/A"}
-              </SidebarBottomRight>
+              <SidebarBottomRight>{projectList[selectedProject].Long ? projectList[selectedProject].Long : "N/A"}</SidebarBottomRight>
             </SidebarBottomLine>
             <SidebarBottomLine>
               <SidebarBottomLeft>Link:</SidebarBottomLeft>
@@ -225,11 +200,7 @@ const Sidebar = ({
             </SidebarBottomLine>
             <SidebarBottomLine>
               <SidebarBottomLeft>Description:</SidebarBottomLeft>
-              <SidebarBottomRight wrap>
-                {projectList[selectedProject].Description
-                  ? projectList[selectedProject].Description
-                  : "N/A"}
-              </SidebarBottomRight>
+              <SidebarBottomRight wrap>{projectList[selectedProject].Description ? projectList[selectedProject].Description : "N/A"}</SidebarBottomRight>
             </SidebarBottomLine>
           </SidebarBottomList>
         ) : (

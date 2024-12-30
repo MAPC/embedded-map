@@ -33,35 +33,31 @@ export const regionMapProps = {
   zoomSnap: 0.25,
 };
 
-/* eslint-disable max-len */
 export const basemaps = {
-  "Topo - ESRI (Default)": {
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-    attribution:
-      "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community",
+  "ArcGIS - Topographic": {
+    name: "arcgis/topographic",
   },
-  "Topo - USGS": {
-    url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
-    attribution:
-      'Tiles courtesy of the <a href="https://usgs.gov/">U.S. Geological Survey</a>',
+  "ArcGIS - Streets": {
+    name: "arcgis/streets",
   },
-  "CartoDB Voyager": {
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  "ArcGIS - Imagery": {
+    name: "arcgis/imagery",
   },
-  "Imagery - ESRI": {
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution:
-      "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+  "ArcGIS - Dark Gray": {
+    name: "arcgis/dark-gray",
+  },
+  "ArcGIS - Human Geography": {
+    name: "arcgis/human-geography",
+  },
+  "ArcGIS - Community": {
+    name: "arcgis/community",
+  },
+  "OpenStreetMaps - Standard": {
+    name: "osm/standard",
   },
 };
-/* eslint-enable max-len */
 
-export const createTileURL = (
-  style = "light-v10",
-  token = process.env.MAPBOX_TOKEN,
-) => {
+export const createTileURL = (style = "light-v10", token = process.env.MAPBOX_TOKEN) => {
   const params = new URLSearchParams();
   params.set("access_token", token || "");
   const stylePath = `styles/v1/mapbox/${style}/tiles/{z}/{x}/{y}/`;
@@ -73,19 +69,13 @@ export const authenticateEsriFromEnv = async () => {
   const clientSecret = process.env.REACT_APP_AGOL_CLIENT_SECRET;
   const expiration = 3600;
   if (clientId == null || clientSecret == null) {
-    console.error(
-      "Unable to authenticate with ArcGIS Online: no credentials provided",
-    );
+    console.error("Unable to authenticate with ArcGIS Online: no credentials provided");
     return null;
   }
   return await authenticateEsri(clientId, clientSecret, expiration);
 };
 
-export const authenticateEsri = async (
-  clientId,
-  clientSecret,
-  expiration = 3600,
-) => {
+export const authenticateEsri = async (clientId, clientSecret, expiration = 3600) => {
   const authservice = "https://www.arcgis.com/sharing/rest/oauth2/token";
   const url = `${authservice}?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials&expiration=${expiration}`;
   let token;
@@ -148,9 +138,7 @@ const writeFeatureCollection = async (featureCollection) => {
       // TODO
     },
   });
-  const store = mapDB
-    .transaction(GEOMETRY_STORE, "readwrite")
-    .objectStore(GEOMETRY_STORE);
+  const store = mapDB.transaction(GEOMETRY_STORE, "readwrite").objectStore(GEOMETRY_STORE);
   await store.put(featureCollection);
 };
 /* eslint-enable no-unused-vars */
@@ -163,14 +151,7 @@ export const getCacheKey = (serviceName, layerKey) => {
   return `${serviceName}-${layerKey}`;
 };
 
-export const queryFeatureService = async ({
-  serviceName,
-  token = null,
-  layerID = null,
-  layerName = null,
-  count = null,
-  force = false,
-}) => {
+export const queryFeatureService = async ({ serviceName, token = null, layerID = null, layerName = null, count = null, force = false }) => {
   const layerKey = layerName ? layerName : layerID;
   const cacheKey = getCacheKey(serviceName, layerKey);
   let featureCollection = await readFeatureCollection(cacheKey);
@@ -215,9 +196,7 @@ export const queryFeatureService = async ({
   let featuresList = [];
   // TODO: Figure out better way to do chunk sizing that takes API limits into account (likely just institute a cap/max)
   const chunkSize = Math.min(Math.ceil(count / 3), 10000);
-  const chunks = [...Array(Math.ceil(count / chunkSize)).keys()].map(
-    (n) => n * chunkSize,
-  );
+  const chunks = [...Array(Math.ceil(count / chunkSize)).keys()].map((n) => n * chunkSize);
   const parts = await Promise.all(
     chunks.map((c) =>
       fetch(`${url}&where=ObjectId>${c} and ObjectId<=${c + chunkSize}`, {
@@ -226,9 +205,7 @@ export const queryFeatureService = async ({
     ),
   );
   const buffers = await Promise.all(parts.map((part) => part.arrayBuffer()));
-  featuresList = buffers.map(
-    (buff) => arcgisPbfDecode(new Uint8Array(buff)).featureCollection,
-  );
+  featuresList = buffers.map((buff) => arcgisPbfDecode(new Uint8Array(buff)).featureCollection);
   featureCollection.features = featuresList.reduce((acc, v) => {
     return acc.concat(v.features);
   }, []);
@@ -264,10 +241,7 @@ const facilityStatuses = {
   3: "Envisioned",
 };
 
-export const getFeatureType = ({
-  seg_type: segmentType,
-  fac_stat: facilityStatus,
-}) => {
+export const getFeatureType = ({ seg_type: segmentType, fac_stat: facilityStatus }) => {
   if (segmentType == null || facilityStatus == null) {
     return null;
   }
