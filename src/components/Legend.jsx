@@ -37,54 +37,86 @@ const LegendTextStrong = styled.div`
 `;
 
 // Hook to handle map events
-/* eslint-disable max-len */
+
 const LegendImages = [
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAUklEQVQ4jWNhoDJgGTVwMIfh8mYHik2LrD3AwrC8uYGBkbGegRpgRcsBFqoZBgEOIzQdHgD5nSqm/f/fyMIQUeNIrSTDAPcylDNyIoWqYPAbCABWeRFT3pkxxQAAAABJRU5ErkJggg==",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.sharedUse} strokeWidth="8" />
+      </svg>
+    ),
     label: "Shared Use Path - Existing",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAa0lEQVQ4jWNhoDJgGTVwMIfh8mYHikyKrD2AYqCDuMJ+XGoPvHqIVdxBTB6hhoGBEcXA/Y4xOA3DZWC9ti3cUEaGWIaRng4d9y8hWXPj1cNgjNXAAy8fOJJq4IGXD3C7EJaORlCkUAsMfgMB/mwdMxwBDPUAAAAASUVORK5CYII=",
-    label: "	Shared Use Path - Design",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.sharedUse} strokeWidth="8" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#FFFFFF" strokeWidth="4" strokeDasharray="12,5" />
+      </svg>
+    ),
+    label: "Shared Use Path - Design",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAP0lEQVQ4jWNhoDJgGTVwRIXhipb9eFVG1DiSZiADgwP57hqaYUgDAw9Q18AI4mKReAOpBFioZRAMjBrIQDEAAEs9BWZ39nGZAAAAAElFTkSuQmCC",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.sharedUse} strokeWidth="8" strokeDasharray="12, 5" />
+      </svg>
+    ),
     label: "Shared Use Path - Envisioned",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAWUlEQVQ4jWNhoDJgGTVwEIfh8evzHSg1zFIz8QDL8etzGxgYGOsZGP5T7Lrj1+cfYIEYRi3w32FkpkPGAyC/U8e4/40slpqJjtRKMgwwL8M4IyZSqAsGv4EA6xAXTjXwwt0AAAAASUVORK5CYII=",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.sharedUseUnimproved} strokeWidth="8" />
+      </svg>
+    ),
     label: "Shared Use Path - Unimproved Surface",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAa0lEQVQ4jWNhoDJgGTVwMIdhwX8Hik2bwHiAhaHgfwMDA0M9xYaBQMH/AyxUMwwCHMBebvBgYLBXZqAIHLzLwNCwg1aR0rCDugYeAPmdSuY1sjBMYHSkVpJhgKdDKIcagIVaBsHAqIEMFAMAgzQUiXCJlQ0AAAAASUVORK5CYII=",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.protectedBikeLane} strokeWidth="8" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#FFFFFF" strokeWidth="4" />
+      </svg>
+    ),
     label: "Protected Bike Lane and Sidewalk",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAfUlEQVQ4jWNhoDJgGTVwMIdhwX8HikyawHgAxUAHFYb9uNQeuINd3EEFSQ0DAyOKgfuzcRuGy8B6d4ShjDlEhiFIAy7LkF04cAn7wB0GBsep2OVALndQwWEgLk34QONOCMZq4IE7DI6kGogtsljQ0xGlgIUahiCDUQMZKAYAmIobNPgRrgQAAAAASUVORK5CYII=",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.protectedBikeLane} strokeWidth="8" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#FFFFFF" strokeWidth="4" strokeDasharray="12,5" />
+      </svg>
+    ),
     label: "Protected Bike Lane - Design or Construction",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAa0lEQVQ4jWNhoDJgGTVwMIdhwX8Hik2bwHiAhaHgfwMDA0M9xYaBQMH/AyxUMwwCHMBebvBgYLBXZqAIHLzLwNCwg1aR0rCDugYeAPmdSuY1sjBMYHSkVpJhgKdDKIcagIVaBsHAqIEMFAMAgzQUiXCJlQ0AAAAASUVORK5CYII=",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.bikeLane} strokeWidth="8" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#FFFFFF" strokeWidth="4" />
+      </svg>
+    ),
     label: "Bike Lane and Sidewalk",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAfUlEQVQ4jWNhoDJgGTVwMIdhwX8HikyawHgAxUAHFYb9uNQeuINd3EEFSQ0DAyOKgfuzcRuGy8B6d4ShjDlEhiFIAy7LkF04cAn7wB0GBsep2OVALndQwWEgLk34QONOCMZq4IE7DI6kGogtsljQ0xGlgIUahiCDUQMZKAYAmIobNPgRrgQAAAAASUVORK5CYII=",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.bikeLane} strokeWidth="8" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#FFFFFF" strokeWidth="4" strokeDasharray="12,5" />
+      </svg>
+    ),
     label: "Bike Lane - Design or Construction",
   },
   {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAeklEQVQ4jWNhoDJgGTVwEIfh9cPzHSg1TNM28QDL9YNzGxgYGesZ/v+n2HXXD88/wAI2jFrg/38HsJdF5A0ZuPglKDLr28cXDG8enqdRpLx5eJ6KBjIyHgD5nSqm/f/fyKJpm+hIrSTDAPMyjEMNwEItg2Bg1EAGigEAv9oj5xnMMgAAAAAASUVORK5CYII=",
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.sharedStreet} strokeWidth="8" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#FFFFFF" strokeWidth="4" />
+      </svg>
+    ),
     label: "Shared Street - Urban",
   },
-  /*
-  {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAXUlEQVQ4jWNhoDJgGTVwEIfh9cPzHSg1TNM28QDL9YNzGxgYGesZ/v+n2HXXD88/wAI2jFrg/3+HEZkOGRkPgPxOFdP+/29k0bRNdKRWkmGAeRnGGSmRQmUw+A0EAB1DG0sM6h4hAAAAAElFTkSuQmCC",
-    label: "Shared Street - Suburban",
-  },
-  {
-    src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAUklEQVQ4jWNhoDJgGTVwJIXh9UPz/mNVwch4QNM20RGu7vB8B4b///ejK9O0S2KkrQsHv4Ga0DAgBDRtEw+AQpaggdQCLFQzCQpGDaQcDP4wBADlKw2jsAsIggAAAABJRU5ErkJggg==",
-    label: "Shared Street - Envisioned",
-  },
-  */
   {
     src: (
       <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
@@ -101,7 +133,7 @@ const LegendImages = [
     ),
     label: "Shared Street - Envisioned",
   },
-  /* eslint-enable max-len */
+
   {
     src: (
       <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
