@@ -75,6 +75,7 @@ const LegendImages = [
     src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAeklEQVQ4jWNhoDJgGTVwEIfh9cPzHSg1TNM28QDL9YNzGxgYGesZ/v+n2HXXD88/wAI2jFrg/38HsJdF5A0ZuPglKDLr28cXDG8enqdRpLx5eJ6KBjIyHgD5nSqm/f/fyKJpm+hIrSTDAPMyjEMNwEItg2Bg1EAGigEAv9oj5xnMMgAAAAAASUVORK5CYII=",
     label: "Shared Street - Urban",
   },
+  /*
   {
     src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAXUlEQVQ4jWNhoDJgGTVwEIfh9cPzHSg1TNM28QDL9YNzGxgYGesZ/v+n2HXXD88/wAI2jFrg/3+HEZkOGRkPgPxOFdP+/29k0bRNdKRWkmGAeRnGGSmRQmUw+A0EAB1DG0sM6h4hAAAAAElFTkSuQmCC",
     label: "Shared Street - Suburban",
@@ -83,19 +84,29 @@ const LegendImages = [
     src: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAUklEQVQ4jWNhoDJgGTVwJIXh9UPz/mNVwch4QNM20RGu7vB8B4b///ejK9O0S2KkrQsHv4Ga0DAgBDRtEw+AQpaggdQCLFQzCQpGDaQcDP4wBADlKw2jsAsIggAAAABJRU5ErkJggg==",
     label: "Shared Street - Envisioned",
   },
+  */
+  {
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.sharedStreet} strokeWidth="8" />
+      </svg>
+    ),
+    label: "Shared Street - Suburban",
+  },
+  {
+    src: (
+      <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.sharedStreet} strokeWidth="8" strokeDasharray="12, 5" />
+      </svg>
+    ),
+    label: "Shared Street - Envisioned",
+  },
   /* eslint-enable max-len */
   {
     src: (
       <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
         <line x1="0" y1="15" x2="30" y2="15" stroke="#888888" strokeWidth="8" />
-        <line
-          x1="0"
-          y1="15"
-          x2="30"
-          y2="15"
-          stroke={featureColors.Gap}
-          strokeWidth="7"
-        />
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.Gap} strokeWidth="7" />
       </svg>
     ),
     label: "Gap - Facility Type TBD",
@@ -103,14 +114,7 @@ const LegendImages = [
   {
     src: (
       <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-        <line
-          x1="0"
-          y1="15"
-          x2="30"
-          y2="15"
-          stroke={featureColors.footTrail}
-          strokeWidth="8"
-        />
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} strokeWidth="8" />
       </svg>
     ),
     label: "Foot Trail - Existing",
@@ -118,28 +122,14 @@ const LegendImages = [
   {
     src: (
       <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-        <line
-          x1="0"
-          y1="15"
-          x2="30"
-          y2="15"
-          stroke={featureColors.footTrail}
-          strokeWidth="8"
-          strokeDasharray="12, 5"
-        />
+        <line x1="0" y1="15" x2="30" y2="15" stroke={featureColors.footTrail} strokeWidth="8" strokeDasharray="12, 5" />
       </svg>
     ),
     label: "Foot Trail - Envisioned",
   },
 ];
 
-const Legend = ({
-  selectedTab = "landlines",
-  selectedType,
-  projectList = [],
-  selectedProject = null,
-  handleProjectSelect = () => {},
-}) => {
+const Legend = ({ selectedTab = "landlines", selectedType, projectList = [], selectedProject = null, handleProjectSelect = () => {} }) => {
   return (
     <LegendWrapper>
       {/* render selected tab */}
@@ -148,40 +138,20 @@ const Legend = ({
           {LegendImages.map((legend) => {
             return (
               <LegendElement key={legend.label}>
-                {typeof legend.src === "string" ? (
-                  <img src={legend.src} style={{ width: 30, height: 30 }} />
-                ) : (
-                  legend.src
-                )}
+                {typeof legend.src === "string" ? <img src={legend.src} style={{ width: 30, height: 30 }} /> : legend.src}
 
-                {legend.label === selectedType ? (
-                  <LegendTextStrong>{legend.label}</LegendTextStrong>
-                ) : (
-                  <LegendText>{legend.label}</LegendText>
-                )}
+                {legend.label === selectedType ? <LegendTextStrong>{legend.label}</LegendTextStrong> : <LegendText>{legend.label}</LegendText>}
               </LegendElement>
             );
           })}
           <LegendElement>
-            <svg
-              width="30"
-              height="30"
-              viewBox="0 0 30 30"
-              xmlns="http://www.w3.org/2000/svg"
-              fill={"blue"}
-            >
+            <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg" fill={"blue"}>
               <circle cx="15" cy="15" r="7" />
             </svg>
             <LegendText>{"Greenway Project"}</LegendText>
           </LegendElement>
           <LegendElement>
-            <svg
-              width="30"
-              height="30"
-              viewBox="0 0 30 30"
-              xmlns="http://www.w3.org/2000/svg"
-              fill={"red"}
-            >
+            <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg" fill={"red"}>
               <circle cx="15" cy="15" r="7" />
             </svg>
             <LegendText>{"Selected Greenway Project"}</LegendText>
@@ -195,7 +165,7 @@ const Legend = ({
                 handleProjectSelect(project);
               }}
               key={project}
-              selectable
+              selectable={true}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

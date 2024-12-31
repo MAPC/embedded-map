@@ -200,7 +200,9 @@ const Sidebar = ({
             </SidebarBottomLine>
             <SidebarBottomLine>
               <SidebarBottomLeft>Description:</SidebarBottomLeft>
-              <SidebarBottomRight wrap>{projectList[selectedProject].Description ? projectList[selectedProject].Description : "N/A"}</SidebarBottomRight>
+              <SidebarBottomRight wrap="scroll">
+                {projectList[selectedProject].Description ? projectList[selectedProject].Description : "N/A"}
+              </SidebarBottomRight>
             </SidebarBottomLine>
           </SidebarBottomList>
         ) : (

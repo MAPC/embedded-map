@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { MapContainer } from "react-leaflet";
 
@@ -42,7 +42,7 @@ export const App = ({ wrapperHeight = "100vh" }) => {
   const [selectedType, setSelectedType] = useState();
   const [lastSelected, setLastSelected] = useState("feature");
   const [projects, setProjects] = useState({});
-  const handleProjectClick = useMemo((feature) => {
+  const handleProjectClick = useCallback((feature) => {
     if (feature != null) {
       setSelectedProject(feature.target.options.name);
       setSelectedFeature();
@@ -50,7 +50,7 @@ export const App = ({ wrapperHeight = "100vh" }) => {
       setLastSelected("project");
     }
   }, []);
-  const handleFeatureClick = useMemo((feature) => {
+  const handleFeatureClick = useCallback((feature) => {
     if (feature != null && feature.layer.feature.properties) {
       setSelectedFeature(feature.layer.feature.properties);
       setSelectedProject();
