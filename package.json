@@ -2,23 +2,23 @@
   "name": "embedded-map",
   "version": "0.1.0",
   "homepage": "https://mapc.github.io/embedded-map",
+  "type": "module",
   "private": true,
   "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
     "airtable": "^0.12.2",
     "arcgis-pbf-parser": "^0.0.4",
     "bootstrap": "^5.3.3",
+    "esri-leaflet": "^3.0.12",
+    "esri-leaflet-vector": "^4.2.6",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "^4.7.1",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.2",
     "react-dom": "^18.3.1",
     "react-esri-leaflet": "^2.0.1",
     "react-leaflet": "^4.2.1",
     "react-scripts": "5.0.1",
-    "styled-components": "^6.1.11",
-    "web-vitals": "^2.1.4"
+    "styled-components": "^6.1.11"
   },
   "scripts": {
     "predeploy": "npm run build",
@@ -41,6 +41,13 @@
     ]
   },
   "devDependencies": {
-    "gh-pages": "^6.1.1"
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@mapc/eslint-config": "^1.0.4",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "eslint": ">=9",
+    "gh-pages": "^6.1.1",
+    "prettier": "^3.3.3"
   }
 }
