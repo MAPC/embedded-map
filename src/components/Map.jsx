@@ -9,7 +9,7 @@ import { LayersControl, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl
 import { FeatureLayer } from "react-esri-leaflet";
 import VectorBasemapLayer from "react-esri-leaflet/plugins/VectorBasemapLayer";
 
-import { featureColors, basemaps, fetchPolygons, authenticateEsri } from "../utils/map";
+import { featureColors, basemaps, fetchPolygons, authenticateEsri, computePathWeight } from "../utils/map";
 
 import "leaflet/dist/leaflet.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -75,7 +75,7 @@ const clientId = process.env.REACT_APP_AGOL_CLIENT_ID;
 const clientSecret = process.env.REACT_APP_AGOL_CLIENT_SECRET;
 const token = await authenticateEsri(clientId, clientSecret);
 
-export const MAPCMap = ({ projects, selectedProject, handleProjectClick = () => {}, handleFeatureClick = () => {} }) => {
+export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProjectClick = () => {}, handleFeatureClick = () => {} }) => {
   const [polygons, setPolygons] = useState([]);
 
   const [showProjects, setShowProjects] = useState(true);
@@ -107,8 +107,6 @@ export const MAPCMap = ({ projects, selectedProject, handleProjectClick = () => 
   }
 
   const [isLoading, setIsLoading] = useState(true);
-
-  let pathWeight = 4.0 * (10.0 / zoom);
 
   useEffect(() => {
     if (showPolygons && polygons.length === 0) {
@@ -261,6 +259,7 @@ export const MAPCMap = ({ projects, selectedProject, handleProjectClick = () => 
           checked={showGaps}
           onChange={() => {
             setShowGaps(!showGaps);
+            setShowEnvisioned(showGaps);
           }}
           type="switch"
           id="custom-switch-gaps"
@@ -293,7 +292,6 @@ export const MAPCMap = ({ projects, selectedProject, handleProjectClick = () => 
         style={(feature) => {
           let colorRow;
           let dashArray;
-
           if (feature.properties.seg_type === 1) {
             colorRow = featureColors.sharedUse;
           }
@@ -339,10 +337,13 @@ export const MAPCMap = ({ projects, selectedProject, handleProjectClick = () => 
             colorRow = isGapFeature ? featureColors.Gap : colorRow; // Yellow for gap if envisioned, keep previous color for non-gap
           }
 
+          let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
+          let weight = computePathWeight(selected, zoom);
+
           return {
             color: colorRow,
             stroke: colorRow,
-            weight: pathWeight,
+            weight,
             fillOpacity: 0,
             opacity: 1,
             dashArray: dashArray,
@@ -360,7 +361,6 @@ export const MAPCMap = ({ projects, selectedProject, handleProjectClick = () => 
         style={(feature) => {
           let colorRow;
           let dashArray;
-          pathWeight = 3.5 * (10.0 / zoom);
 
           if (feature.properties.seg_type === 1 && feature.properties.fac_stat === 2) {
             colorRow = "white";
@@ -385,10 +385,13 @@ export const MAPCMap = ({ projects, selectedProject, handleProjectClick = () => 
             colorRow = isGapFeature ? featureColors.Gap : colorRow; // Yellow for gap if envisioned, keep previous color for non-gap
           }
 
+          let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
+          let weight = computePathWeight(selected, zoom);
+
           return {
             color: colorRow,
             stroke: colorRow,
-            weight: pathWeight,
+            weight,
             fillOpacity: 0,
             opacity: 1,
             dashArray: dashArray,

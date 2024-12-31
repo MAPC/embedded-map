@@ -37,23 +37,17 @@ export const basemaps = {
   "ArcGIS - Topographic": {
     name: "arcgis/topographic",
   },
-  "ArcGIS - Streets": {
-    name: "arcgis/streets",
-  },
   "ArcGIS - Imagery": {
     name: "arcgis/imagery",
   },
   "ArcGIS - Dark Gray": {
     name: "arcgis/dark-gray",
   },
-  "ArcGIS - Human Geography": {
-    name: "arcgis/human-geography",
+  "OpenStreetMaps - Standard Relief": {
+    name: "osm/standard-relief",
   },
-  "ArcGIS - Community": {
-    name: "arcgis/community",
-  },
-  "OpenStreetMaps - Standard": {
-    name: "osm/standard",
+  "OpenStreetMaps - Light Gray": {
+    name: "osm/light-gray",
   },
 };
 
@@ -221,6 +215,14 @@ export const featureColors = {
   sharedStreet: "#d7c29e",
   Gap: "#ffffcc",
   footTrail: "#ffcccc",
+};
+
+export const basePathWeight = 5.0;
+export const maxPathWeight = 10.0;
+export const computePathWeight = (selected, zoom) => {
+  // Make selected paths wider, up to a limit
+  let weight = basePathWeight / (zoom / 10);
+  return selected ? Math.min(weight * 3, maxPathWeight) : weight;
 };
 
 const segmentTypes = {

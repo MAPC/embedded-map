@@ -94,7 +94,13 @@ export const App = ({ wrapperHeight = "100vh" }) => {
           smoothWheelZoom={true} // enable smooth zoom
           smoothSensitivity={2.5} // zoom speed. default is 1
         >
-          <Map projects={projects} selectedProject={selectedProject} handleProjectClick={handleProjectClick} handleFeatureClick={handleFeatureClick} />
+          <Map
+            projects={projects}
+            selectedProject={selectedProject}
+            handleProjectClick={handleProjectClick}
+            handleFeatureClick={handleFeatureClick}
+            selectedFeature={selectedFeature}
+          />
         </MapContainer>
       </Wrapper>
       <Sidebar
