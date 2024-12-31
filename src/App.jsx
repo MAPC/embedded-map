@@ -26,7 +26,7 @@ const Wrapper = styled.div`
   div.leaflet-control-layers {
     position: absolute;
     top: 18rem;
-    right: 10px;
+    right: 0px;
   }
 
   section.leaflet-control-layers-list {
