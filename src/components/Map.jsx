@@ -8,7 +8,7 @@ import Form from "react-bootstrap/Form";
 import { LayersControl, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl, useMap } from "react-leaflet";
 import { FeatureLayer } from "react-esri-leaflet";
 import VectorBasemapLayer from "react-esri-leaflet/plugins/VectorBasemapLayer";
-
+import VectorTileLayer from "react-esri-leaflet/plugins/VectorTileLayer";
 import { featureColors, basemaps, fetchPolygons, authenticateEsri, computePathWeight } from "../utils/map";
 
 import "leaflet/dist/leaflet.css";
@@ -16,6 +16,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 // Importing "for side effects", i.e., to extend leaflet with smooth scrolling
 import "../SmoothScroll.js";
+import "../Esri-leaflet-vector-error-fix.js";
 
 const LoadingOverlay = styled.div`
   position: absolute;
@@ -77,9 +78,6 @@ const token = await authenticateEsri(clientId, clientSecret);
 
 export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProjectClick = () => {}, handleFeatureClick = () => {} }) => {
   const [polygons, setPolygons] = useState([]);
-
-  const [showProjects, setShowProjects] = useState(true);
-
   const [zoom, setZoom] = useState(10);
   const [simplifyFactor, setSimplifyFactor] = useState(0);
 
@@ -90,6 +88,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
   const [showGaps, setShowGaps] = useState(false);
   const [featureQuery, setFeatureQuery] = useState("1=1");
   const [selectedBasemap, setSelectedBasemap] = useState("ArcGIS - Topographic");
+  const [showWalkingTrail, setShowWalkingTrail] = useState(false);
 
   const map = useMap();
 
@@ -134,32 +133,6 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
     }
   }
 
-  // on project selection, set current project state, clear feature state to remove ambiguity and reduce confusion
-  if (Object.keys(projects).length > 0 && showProjects) {
-    // render all points from Airtable CMS point layer base ( CMS - Landlines )
-    for (let projectName of Object.keys(projects)) {
-      const point = projects[projectName];
-      if (point.Lat != null && point.Long != null) {
-        layers.push(
-          <Circle
-            key={projectName}
-            name={projectName}
-            pathOptions={{
-              color: projectName === selectedProject ? "red" : "blue",
-              fillOpacity: "100%",
-            }}
-            radius={90000 / Math.pow(zoom - 2, 2.6)}
-            center={[point.Lat, point.Long]}
-            eventHandlers={{
-              click: handleProjectClick,
-            }}
-            pane="pointPane"
-          />,
-        );
-      }
-    }
-  }
-
   useEffect(() => {
     // generate where queries for featureLayer query
     const facilityStatuses = [];
@@ -178,9 +151,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
     if (facilityStatuses.length > 0) {
       query = `(fac_stat in (${facilityStatuses.join(",")}))`;
     }
-
     setFeatureQuery(query);
-    setIsLoading(true);
   }, [showEnvisioned, showDesignConstruction, showExisting, showGaps]);
 
   useEffect(() => {
@@ -198,20 +169,10 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
       <Form
         style={{
           position: "absolute",
-          top: "10px",
+          top: "-30px",
           right: "-22px",
         }}
       >
-        <StyledSwitch
-          checked={showProjects}
-          onChange={() => {
-            setShowProjects(!showProjects);
-          }}
-          type="switch"
-          id="custom-switch"
-          label="Toggle Active Projects"
-          style={{ top: "0rem" }}
-        />
         <StyledSwitch
           checked={showExisting}
           onChange={() => {
@@ -266,6 +227,16 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           label="Show Gap Features"
           style={{ top: "15rem" }}
         />
+        <StyledSwitch
+          checked={showWalkingTrail}
+          onChange={() => {
+            setShowWalkingTrail(!showWalkingTrail);
+          }}
+          type="switch"
+          id="custom-switch-walking-trail"
+          label="Walking Trail"
+          style={{ top: "18rem" }}
+        />
       </Form>
       <LayersControl sortLayers>
         {Object.keys(basemaps).map((basemapKey) => (
@@ -280,6 +251,18 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
 
       <MapEventsHandler setZoom={setZoom} setSelectedBasemap={setSelectedBasemap} />
       {layers}
+
+      {showWalkingTrail && (
+        <VectorTileLayer
+          url="https://tiles.arcgis.com/tiles/c5WwApDsDjRhIVkH/arcgis/rest/services/Walking_trail_vector_tiles/VectorTileServer"
+          token={token}
+          eventHandlers={{
+            load: () => {
+              setIsLoading(false);
+            },
+          }}
+        />
+      )}
       <FeatureLayer
         url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
         key={`${featureQuery}`} //FORCE RELOAD ON QUERY CHANGE
