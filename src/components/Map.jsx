@@ -66,6 +66,7 @@ const MapEventsHandler = ({ setZoom, setSelectedBasemap }) => {
       setSelectedBasemap(layer.name);
     },
   });
+  window.map = map;
   return null;
 };
 
@@ -144,7 +145,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
     if (showDesignConstruction) {
       facilityStatuses.push("2");
     }
-    if (showEnvisioned) {
+    if (showEnvisioned || showGaps) {
       facilityStatuses.push("3");
     }
 
@@ -198,6 +199,9 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           checked={showEnvisioned}
           onChange={() => {
             setShowEnvisioned(!showEnvisioned);
+            if (showGaps) {
+              setShowGaps(false);
+            }
           }}
           type="switch"
           id="custom-switch"
@@ -379,7 +383,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
             opacity: 1,
             dashArray: dashArray,
             dashOffset: "0",
-            zIndex: 1001,
+            zIndex: isGapFeature ? 1002 : 1001,
           };
         }}
         pane="mainPane"

@@ -25,7 +25,6 @@ L.Map.include({
         this.fire("layerremove", { layer });
         layer.fire("remove");
       }
-  
       // @ts-expect-error leaflet TS very incomplete
       layer._map = layer._mapToAdd = null;
   
