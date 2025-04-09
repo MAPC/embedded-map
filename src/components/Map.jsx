@@ -198,10 +198,11 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
         <StyledSwitch
           checked={showEnvisioned}
           onChange={() => {
-            setShowEnvisioned(!showEnvisioned);
-            if (showGaps) {
+            // close gaps when envisioning is toggled
+            if (!showEnvisioned) {
               setShowGaps(false);
             }
+            setShowEnvisioned(!showEnvisioned);
           }}
           type="switch"
           id="custom-switch"
@@ -223,8 +224,12 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
         <StyledSwitch
           checked={showGaps}
           onChange={() => {
+            // close envisioning when gaps are toggled
+            if (showGaps === false) {
+              setShowEnvisioned(false);
+            }
             setShowGaps(!showGaps);
-            setShowEnvisioned(showGaps);
+            
           }}
           type="switch"
           id="custom-switch-gaps"
@@ -316,14 +321,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
             colorRow = featureColors.footTrail;
             dashArray = "3,8";
           }
-          let isGapFeature = feature.properties.seg_type === 9;
-          if (showGaps && !showEnvisioned) {
-            colorRow = isGapFeature ? "#FF0000" : "#4f1a32"; // Red for gap, default for non-gap when showing gap features only
-          } else if (showEnvisioned) {
-            // Handle cases when Envisioned is shown
-            colorRow = isGapFeature ? featureColors.Gap : colorRow; // Yellow for gap if envisioned, keep previous color for non-gap
-          }
-
+  
           let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
           let weight = computePathWeight(selected, zoom);
 
@@ -363,15 +361,10 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           } else if (feature.properties.seg_type === 4 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 1)) {
             colorRow = "white";
           }
-
-          let isGapFeature = feature.properties.seg_type === 9;
-          if (showGaps && !showEnvisioned) {
-            colorRow = isGapFeature ? "#FF0000" : "#4f1a32"; // Red for gap, default for non-gap when showing gap features only
-          } else if (showEnvisioned) {
-            // Handle cases when Envisioned is shown
-            colorRow = isGapFeature ? featureColors.Gap : colorRow; // Yellow for gap if envisioned, keep previous color for non-gap
+          if (feature.properties.seg_type == 9) {
+            colorRow = featureColors.Gap;
           }
-
+        
           let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
           let weight = computePathWeight(selected, zoom);
 
@@ -383,11 +376,40 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
             opacity: 1,
             dashArray: dashArray,
             dashOffset: "0",
-            zIndex: isGapFeature ? 1002 : 1001,
+            zIndex: 1001
           };
         }}
         pane="mainPane"
       />
+
+      {/* Make gap features layer to be on top of all other features to prevent layer order issues */}
+      {(showGaps) && (
+        <FeatureLayer
+          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+          key={`gaps-${showGaps}-${showEnvisioned}`}
+          simplifyFactor={simplifyFactor}
+          eventHandlers={{
+            click: handleFeatureClick,
+            load: () => setIsLoading(false),
+          }}
+          where={featureQuery}
+          style={(feature) => {
+            let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
+            let weight = computePathWeight(selected, zoom);
+            let isGapFeature = feature.properties.seg_type === 9;
+            
+            return {
+              color: isGapFeature ? "#FF0000" : "#4f1a32",
+              stroke: isGapFeature ? "#FF0000" : "#4f1a32",
+              weight,
+              fillOpacity: 0,
+              opacity: 1,
+              zIndex: isGapFeature ? 1003 : 1002, // Gaps on top, other trails just below
+            };
+          }}
+          pane="mainPane"
+        />
+      )}
     </>
   );
 };
