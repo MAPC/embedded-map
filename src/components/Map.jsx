@@ -8,7 +8,7 @@ import Form from "react-bootstrap/Form";
 import { LayersControl, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl, useMap } from "react-leaflet";
 import { FeatureLayer } from "react-esri-leaflet";
 import VectorBasemapLayer from "react-esri-leaflet/plugins/VectorBasemapLayer";
-
+import VectorTileLayer from "react-esri-leaflet/plugins/VectorTileLayer";
 import { featureColors, basemaps, fetchPolygons, authenticateEsri, computePathWeight } from "../utils/map";
 
 import "leaflet/dist/leaflet.css";
@@ -16,6 +16,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 // Importing "for side effects", i.e., to extend leaflet with smooth scrolling
 import "../SmoothScroll.js";
+import "../Esri-leaflet-vector-error-fix.js";
 
 const LoadingOverlay = styled.div`
   position: absolute;
@@ -65,6 +66,7 @@ const MapEventsHandler = ({ setZoom, setSelectedBasemap }) => {
       setSelectedBasemap(layer.name);
     },
   });
+  window.map = map;
   return null;
 };
 
@@ -77,9 +79,6 @@ const token = await authenticateEsri(clientId, clientSecret);
 
 export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProjectClick = () => {}, handleFeatureClick = () => {} }) => {
   const [polygons, setPolygons] = useState([]);
-
-  const [showProjects, setShowProjects] = useState(true);
-
   const [zoom, setZoom] = useState(10);
   const [simplifyFactor, setSimplifyFactor] = useState(0);
 
@@ -90,6 +89,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
   const [showGaps, setShowGaps] = useState(false);
   const [featureQuery, setFeatureQuery] = useState("1=1");
   const [selectedBasemap, setSelectedBasemap] = useState("ArcGIS - Topographic");
+  const [showWalkingTrail, setShowWalkingTrail] = useState(false);
 
   const map = useMap();
 
@@ -134,32 +134,6 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
     }
   }
 
-  // on project selection, set current project state, clear feature state to remove ambiguity and reduce confusion
-  if (Object.keys(projects).length > 0 && showProjects) {
-    // render all points from Airtable CMS point layer base ( CMS - Landlines )
-    for (let projectName of Object.keys(projects)) {
-      const point = projects[projectName];
-      if (point.Lat != null && point.Long != null) {
-        layers.push(
-          <Circle
-            key={projectName}
-            name={projectName}
-            pathOptions={{
-              color: projectName === selectedProject ? "red" : "blue",
-              fillOpacity: "100%",
-            }}
-            radius={90000 / Math.pow(zoom - 2, 2.6)}
-            center={[point.Lat, point.Long]}
-            eventHandlers={{
-              click: handleProjectClick,
-            }}
-            pane="pointPane"
-          />,
-        );
-      }
-    }
-  }
-
   useEffect(() => {
     // generate where queries for featureLayer query
     const facilityStatuses = [];
@@ -171,16 +145,14 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
     if (showDesignConstruction) {
       facilityStatuses.push("2");
     }
-    if (showEnvisioned) {
+    if (showEnvisioned || showGaps) {
       facilityStatuses.push("3");
     }
 
     if (facilityStatuses.length > 0) {
       query = `(fac_stat in (${facilityStatuses.join(",")}))`;
     }
-
     setFeatureQuery(query);
-    setIsLoading(true);
   }, [showEnvisioned, showDesignConstruction, showExisting, showGaps]);
 
   useEffect(() => {
@@ -198,20 +170,10 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
       <Form
         style={{
           position: "absolute",
-          top: "10px",
+          top: "-30px",
           right: "-22px",
         }}
       >
-        <StyledSwitch
-          checked={showProjects}
-          onChange={() => {
-            setShowProjects(!showProjects);
-          }}
-          type="switch"
-          id="custom-switch"
-          label="Toggle Active Projects"
-          style={{ top: "0rem" }}
-        />
         <StyledSwitch
           checked={showExisting}
           onChange={() => {
@@ -236,6 +198,10 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
         <StyledSwitch
           checked={showEnvisioned}
           onChange={() => {
+            // close gaps when envisioning is toggled
+            if (!showEnvisioned) {
+              setShowGaps(false);
+            }
             setShowEnvisioned(!showEnvisioned);
           }}
           type="switch"
@@ -258,13 +224,27 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
         <StyledSwitch
           checked={showGaps}
           onChange={() => {
+            // close envisioning when gaps are toggled
+            if (showGaps === false) {
+              setShowEnvisioned(false);
+            }
             setShowGaps(!showGaps);
-            setShowEnvisioned(showGaps);
+            
           }}
           type="switch"
           id="custom-switch-gaps"
           label="Show Gap Features"
           style={{ top: "15rem" }}
+        />
+        <StyledSwitch
+          checked={showWalkingTrail}
+          onChange={() => {
+            setShowWalkingTrail(!showWalkingTrail);
+          }}
+          type="switch"
+          id="custom-switch-walking-trail"
+          label="Walking Trail"
+          style={{ top: "18rem" }}
         />
       </Form>
       <LayersControl sortLayers>
@@ -280,6 +260,18 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
 
       <MapEventsHandler setZoom={setZoom} setSelectedBasemap={setSelectedBasemap} />
       {layers}
+
+      {showWalkingTrail && (
+        <VectorTileLayer
+          url="https://tiles.arcgis.com/tiles/c5WwApDsDjRhIVkH/arcgis/rest/services/Walking_trail_vector_tiles/VectorTileServer"
+          token={token}
+          eventHandlers={{
+            load: () => {
+              setIsLoading(false);
+            },
+          }}
+        />
+      )}
       <FeatureLayer
         url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
         key={`${featureQuery}`} //FORCE RELOAD ON QUERY CHANGE
@@ -329,14 +321,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
             colorRow = featureColors.footTrail;
             dashArray = "3,8";
           }
-          let isGapFeature = feature.properties.seg_type === 9;
-          if (showGaps && !showEnvisioned) {
-            colorRow = isGapFeature ? "#FF0000" : "#4f1a32"; // Red for gap, default for non-gap when showing gap features only
-          } else if (showEnvisioned) {
-            // Handle cases when Envisioned is shown
-            colorRow = isGapFeature ? featureColors.Gap : colorRow; // Yellow for gap if envisioned, keep previous color for non-gap
-          }
-
+  
           let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
           let weight = computePathWeight(selected, zoom);
 
@@ -376,15 +361,10 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           } else if (feature.properties.seg_type === 4 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 1)) {
             colorRow = "white";
           }
-
-          let isGapFeature = feature.properties.seg_type === 9;
-          if (showGaps && !showEnvisioned) {
-            colorRow = isGapFeature ? "#FF0000" : "#4f1a32"; // Red for gap, default for non-gap when showing gap features only
-          } else if (showEnvisioned) {
-            // Handle cases when Envisioned is shown
-            colorRow = isGapFeature ? featureColors.Gap : colorRow; // Yellow for gap if envisioned, keep previous color for non-gap
+          if (feature.properties.seg_type == 9) {
+            colorRow = featureColors.Gap;
           }
-
+        
           let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
           let weight = computePathWeight(selected, zoom);
 
@@ -396,11 +376,40 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
             opacity: 1,
             dashArray: dashArray,
             dashOffset: "0",
-            zIndex: 1001,
+            zIndex: 1001
           };
         }}
         pane="mainPane"
       />
+
+      {/* Make gap features layer to be on top of all other features to prevent layer order issues */}
+      {(showGaps) && (
+        <FeatureLayer
+          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+          key={`gaps-${showGaps}-${showEnvisioned}`}
+          simplifyFactor={simplifyFactor}
+          eventHandlers={{
+            click: handleFeatureClick,
+            load: () => setIsLoading(false),
+          }}
+          where={featureQuery}
+          style={(feature) => {
+            let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
+            let weight = computePathWeight(selected, zoom);
+            let isGapFeature = feature.properties.seg_type === 9;
+            
+            return {
+              color: isGapFeature ? "#FF0000" : "#4f1a32",
+              stroke: isGapFeature ? "#FF0000" : "#4f1a32",
+              weight,
+              fillOpacity: 0,
+              opacity: 1,
+              zIndex: isGapFeature ? 1003 : 1002, // Gaps on top, other trails just below
+            };
+          }}
+          pane="mainPane"
+        />
+      )}
     </>
   );
 };
