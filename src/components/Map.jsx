@@ -243,7 +243,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           }}
           type="switch"
           id="custom-switch-walking-trail"
-          label="Walking Trail"
+          label="Trailmap layer"
           style={{ top: "18rem" }}
         />
       </Form>
