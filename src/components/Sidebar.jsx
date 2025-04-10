@@ -21,8 +21,9 @@ const SidebarTop = styled.div`
   border-style: solid;
   border-color: rgba(225, 225, 225, 1);
   border-width: 0 0 2px 0;
-  padding: 0.5rem 1rem 1.5rem 1.5rem;
+  padding: 1rem 1.5rem;
 `;
+
 const SidebarBottom = styled.div`
   background-color: rgba(250, 250, 250, 1);
   height: 35%;
@@ -30,64 +31,107 @@ const SidebarBottom = styled.div`
   color: rgba(175, 175, 175, 1);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   user-select: none;
-  overflow-y: scroll;
+  overflow-y: auto;
 `;
 
 const SidebarBottomList = styled.div`
   width: 100%;
   height: 100%;
-  padding: 1rem 1rem;
+  padding: 0.25rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: start;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.5rem;
   color: #0b1618;
 `;
 
 const SidebarBottomTitle = styled.div`
   width: 100%;
-
   font-weight: bold;
-  font-size: 1rem;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  font-size: 1.2rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid #e1e1e1;
+  margin-bottom: 0.25rem;
 `;
 
 const SidebarBottomLine = styled.div`
   width: 100%;
   color: #0b1618;
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 0.25rem;
+`;
+
+const CoordinatesContainer = styled.div`
+  width: 100%;
+  margin: 0.25rem 0;
+`;
+
+const CoordinateValue = styled.div`
+  color: #333;
+  font-family: monospace;
+  font-size: 1rem;
+`;
+
+const CoordinateNote = styled.div`
+  color: #666;
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-top: 0.2rem;
 `;
 
 const SidebarBottomLeft = styled.div`
-  float: left;
-  color: rgba(160, 160, 160, 1);
-  width: 40%;
+  color: #666;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.1rem;
 `;
 
 const SidebarBottomRight = styled.div`
-  float: right;
-  overflow: hidden;
-
-  overflow-y: ${(props) => (props.wrap ? "scroll" : "hidden")};
-  white-space: ${(props) => (props.wrap ? "normal" : "nowrap")};
-  text-overflow: ellipsis;
+  color: #333;
+  line-height: 1.3;
+  
+  a {
+    color: #004a91;
+    text-decoration: none;
+    word-break: break-word;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 `;
 
 const SideBarTitle = styled.h4`
-  margin-bottom: 0.25rem;
+  margin-bottom: 0;
   width: 100%;
   display: flex;
   justify-content: center;
-  align-items: end;
+  align-items: center;
   background-color: #004a91;
   color: #f2f5ff;
-  padding: 0.7rem 0.7rem;
+  padding: 1rem;
+  
+  a {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: inherit;
+    text-decoration: none;
+    
+    img {
+      width: 90px;
+      height: auto;
+    }
+    
+    span {
+      font-size: 1.2rem;
+    }
+  }
 `;
 
 const Sidebar = ({
@@ -104,26 +148,15 @@ const Sidebar = ({
   return (
     <RightSidebar>
       <SideBarTitle>
-        {/* sidebar title header */}
-        <a
-          href="https://www.mapc.org/transportation/landline/"
-          style={{
-            position: "relative",
-            color: "inherit",
-            textDecoration: "none",
-          }}
-        >
-          <img alt="MAPC logo" src={MAPCLogo} style={{ marginRight: "0.5rem", width: 90, height: "auto" }} />
-          <span style={{ position: "relative", bottom: "-16px" }}>LandLine Map</span>
+        <a href="https://www.mapc.org/transportation/landline/">
+          <img alt="MAPC logo" src={MAPCLogo} />
+          <span>LandLine Map</span>
         </a>
       </SideBarTitle>
       <SidebarTop>
-        {/* tab selection */}
         <Nav justify variant="tabs" defaultActiveKey="landlines" onSelect={handleSelectTab}>
           <Nav.Item>
-            <Nav.Link eventKey="landlines" style={{ height: "100%" }}>
-              Landline Greenways
-            </Nav.Link>
+            <Nav.Link eventKey="landlines">Landline Greenways</Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="projects">Active Projects</Nav.Link>
@@ -141,56 +174,51 @@ const Sidebar = ({
         {lastSelected === "feature" ? (
           selectedFeature !== undefined ? (
             <SidebarBottomList>
-              <SidebarBottomTitle>Landline</SidebarBottomTitle>
+              <SidebarBottomTitle>Landline Details</SidebarBottomTitle>
               <SidebarBottomLine>
-                <SidebarBottomLeft>Name:</SidebarBottomLeft>
+                <SidebarBottomLeft>Name</SidebarBottomLeft>
                 <SidebarBottomRight>{"N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
-                <SidebarBottomLeft>Type:</SidebarBottomLeft>
+                <SidebarBottomLeft>Type</SidebarBottomLeft>
                 <SidebarBottomRight>{selectedType ? selectedType : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
-                <SidebarBottomLeft>Project:</SidebarBottomLeft>
+                <SidebarBottomLeft>Project</SidebarBottomLeft>
                 <SidebarBottomRight>{selectedFeature.reg_name ? selectedFeature.reg_name : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
-                <SidebarBottomLeft>Link:</SidebarBottomLeft>
+                <SidebarBottomLeft>Link</SidebarBottomLeft>
                 <SidebarBottomRight>{selectedProjectLink ? selectedProjectLink : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
             </SidebarBottomList>
           ) : (
-            "Select a landline"
+            <div>Select a landline to view details</div>
           )
         ) : selectedProject !== undefined ? (
           <SidebarBottomList>
-            <SidebarBottomTitle>Project</SidebarBottomTitle>
+            <SidebarBottomTitle>Project Details</SidebarBottomTitle>
             <SidebarBottomLine>
-              <SidebarBottomLeft>Name:</SidebarBottomLeft>
+              <SidebarBottomLeft>Name</SidebarBottomLeft>
               <SidebarBottomRight>{selectedProject}</SidebarBottomRight>
             </SidebarBottomLine>
             <SidebarBottomLine>
-              <SidebarBottomLeft>Latitude:</SidebarBottomLeft>
-              <SidebarBottomRight>{projectList[selectedProject].Lat ? projectList[selectedProject].Lat : "N/A"}</SidebarBottomRight>
+              <SidebarBottomLeft>Coordinates</SidebarBottomLeft>
+              <CoordinateValue>
+                {projectList[selectedProject].Lat && projectList[selectedProject].Long ? 
+                  `(${projectList[selectedProject].Lat}, ${projectList[selectedProject].Long})` : 
+                  "N/A"
+                }
+              </CoordinateValue>
+              <CoordinateNote>
+                Format: (latitude, longitude)
+              </CoordinateNote>
             </SidebarBottomLine>
             <SidebarBottomLine>
-              <SidebarBottomLeft>Longitude:</SidebarBottomLeft>
-              <SidebarBottomRight>{projectList[selectedProject].Long ? projectList[selectedProject].Long : "N/A"}</SidebarBottomRight>
-            </SidebarBottomLine>
-            <SidebarBottomLine>
-              <SidebarBottomLeft>Link:</SidebarBottomLeft>
+              <SidebarBottomLeft>Link</SidebarBottomLeft>
               <SidebarBottomRight>
                 {projectList[selectedProject].Link ? (
-                  <a
-                    href={projectList[selectedProject].Link}
-                    target="_blank"
-                    style={{
-                      overflowX: "ellipses",
-                      display: "block",
-                      textAlign: "end",
-                      width: "100%",
-                    }}
-                  >
+                  <a href={projectList[selectedProject].Link} target="_blank" rel="noopener noreferrer">
                     {projectList[selectedProject].Link}
                   </a>
                 ) : (
@@ -199,14 +227,14 @@ const Sidebar = ({
               </SidebarBottomRight>
             </SidebarBottomLine>
             <SidebarBottomLine>
-              <SidebarBottomLeft>Description:</SidebarBottomLeft>
-              <SidebarBottomRight wrap="scroll">
+              <SidebarBottomLeft>Description</SidebarBottomLeft>
+              <SidebarBottomRight>
                 {projectList[selectedProject].Description ? projectList[selectedProject].Description : "N/A"}
               </SidebarBottomRight>
             </SidebarBottomLine>
           </SidebarBottomList>
         ) : (
-          "Select a project"
+          <div>Select a project to view details</div>
         )}
       </SidebarBottom>
     </RightSidebar>
