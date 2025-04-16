@@ -54,28 +54,22 @@ const Legend = ({ selectedTab = "landlines", selectedType, projectList = [], sel
   const statusStyles = [
     {
       label: "Existing",
-      style: (color) => (
-        <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-          <line x1="0" y1="15" x2="30" y2="15" stroke="#888888" strokeWidth="8" />
-        </svg>
-      ),
+      style: <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#888888" strokeWidth="8" />
+      </svg>
     },
     {
       label: "Design or Construction",
-      style: (color) => (
-        <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-          <line x1="0" y1="15" x2="30" y2="15" stroke="#888888" strokeWidth="8" />
-          <line x1="0" y1="15" x2="30" y2="15" stroke="#FFFFFF" strokeWidth="4" strokeDasharray="12,5" />
-        </svg>
-      ),
+      style: <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#888888" strokeWidth="8" />
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#FFFFFF" strokeWidth="4" strokeDasharray="12,5" />
+      </svg>
     },
     {
       label: "Envisioned",
-      style: (color) => (
-        <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-          <line x1="0" y1="15" x2="30" y2="15" stroke="#888888" strokeWidth="8" strokeDasharray="12, 5" />
-        </svg>
-      ),
+      style: <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="15" x2="30" y2="15" stroke="#888888" strokeWidth="8" strokeDasharray="12, 5" />
+      </svg>
     },
   ];
 
@@ -93,11 +87,7 @@ const Legend = ({ selectedTab = "landlines", selectedType, projectList = [], sel
       color: featureColors.bikeLane,
     },
     {
-      label: "Shared Street – Urban with Sidewalk",
-      color: featureColors.sharedStreet,
-    },
-    {
-      label: "Shared Street – Suburban/Rural",
+      label: "Shared Street",
       color: featureColors.sharedStreet,
     },
     {
@@ -118,7 +108,7 @@ const Legend = ({ selectedTab = "landlines", selectedType, projectList = [], sel
             <LegendSectionTitle>Trail Status</LegendSectionTitle>
             {statusStyles.map((status) => (
               <LegendElement key={status.label}>
-                {status.style()}
+                {status.style}
                 <LegendText>{status.label}</LegendText>
               </LegendElement>
             ))}
