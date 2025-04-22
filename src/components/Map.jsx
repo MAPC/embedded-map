@@ -181,7 +181,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           }}
           type="switch"
           id="custom-switch"
-          label="Existing Greenways"
+          label="Existing Trails"
           style={{ top: "3rem" }}
         />
         <StyledSwitch
@@ -340,26 +340,30 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
       />
       {/* inverted dash extra layer */}
       <FeatureLayer
+       eventHandlers={{
+        click: handleFeatureClick,
+        load: () => setIsLoading(false),
+      }}
         url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
         simplifyFactor={simplifyFactor}
         where={featureQuery + " AND " + negativeFeatureQuery}
         style={(feature) => {
           let colorRow;
           let dashArray;
-
+         
           if (feature.properties.seg_type === 1 && feature.properties.fac_stat === 2) {
-            colorRow = "white";
+            colorRow = "white";  // Shared Use Path - Design
             dashArray = "3,8";
           } else if (feature.properties.seg_type === 2 && feature.properties.fac_stat === 1) {
-            colorRow = "white";
+            colorRow = "none";  // Protected Bike Lane and Sidewalk
           } else if (feature.properties.seg_type === 2 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) {
-            colorRow = "white";
+            colorRow = "white";  // Protected Bike Lane and Sidewalk design or construction
             dashArray = "3,8";
           } else if (feature.properties.seg_type === 3 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) {
-            colorRow = "white";
+            colorRow = "white"; // Bike Lane - Design or Construction
             dashArray = "3,8";
           } else if (feature.properties.seg_type === 4 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 1)) {
-            colorRow = "white";
+            colorRow = "none"; //Shared Street - Urban or suburban
           }
           if (feature.properties.seg_type == 9) {
             colorRow = featureColors.Gap;
