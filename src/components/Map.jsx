@@ -5,11 +5,11 @@ import styled from "styled-components";
 import Spinner from "react-bootstrap/Spinner";
 import Form from "react-bootstrap/Form";
 
-import { LayersControl, ZoomControl, GeoJSON, Circle, useMapEvents, ScaleControl, useMap } from "react-leaflet";
+import { LayersControl, ZoomControl, GeoJSON, useMapEvents, ScaleControl, useMap } from "react-leaflet";
 import { FeatureLayer } from "react-esri-leaflet";
 import VectorBasemapLayer from "react-esri-leaflet/plugins/VectorBasemapLayer";
 import VectorTileLayer from "react-esri-leaflet/plugins/VectorTileLayer";
-import { featureColors, basemaps, fetchPolygons, authenticateEsri, computePathWeight } from "../utils/map";
+import { featureColors, basemaps, fetchPolygons, authenticateEsri, computePathWeight, getSimplifyFactor } from "../utils/map";
 
 import "leaflet/dist/leaflet.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -57,11 +57,8 @@ const StyledSwitch = styled(Form.Check)`
   width: 13rem;
 `;
 
-const MapEventsHandler = ({ setZoom, setSelectedBasemap }) => {
+const MapEventsHandler = ({ setSelectedBasemap }) => {
   const map = useMapEvents({
-    zoomend: () => {
-      setZoom(map.getZoom());
-    },
     baselayerchange: (layer) => {
       setSelectedBasemap(layer.name);
     },
@@ -79,8 +76,6 @@ const token = await authenticateEsri(clientId, clientSecret);
 
 export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProjectClick = () => {}, handleFeatureClick = () => {} }) => {
   const [polygons, setPolygons] = useState([]);
-  const [zoom, setZoom] = useState(10);
-  const [simplifyFactor, setSimplifyFactor] = useState(0);
 
   const [showPolygons, setShowPolygons] = useState(true);
   const [showExisting, setShowExisting] = useState(true);
@@ -93,6 +88,10 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
 
   const map = useMap();
 
+  if (map.getPane("highlightPane") == null) {
+    map.createPane("highlightPane");
+    map.getPane("highlightPane").style.zIndex = 300;
+  }
   if (map.getPane("outlinePane") == null) {
     map.createPane("outlinePane");
     map.getPane("outlinePane").style.zIndex = 400;
@@ -100,10 +99,6 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
   if (map.getPane("mainPane") == null) {
     map.createPane("mainPane");
     map.getPane("mainPane").style.zIndex = 500;
-  }
-  if (map.getPane("pointPane") == null) {
-    map.createPane("pointPane");
-    map.getPane("pointPane").style.zIndex = 600;
   }
 
   const [isLoading, setIsLoading] = useState(true);
@@ -154,16 +149,6 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
     }
     setFeatureQuery(query);
   }, [showEnvisioned, showDesignConstruction, showExisting, showGaps]);
-
-  useEffect(() => {
-    if (zoom >= 10) {
-      setSimplifyFactor(0.5);
-    } else if (zoom >= 5) {
-      setSimplifyFactor(0.25);
-    } else {
-      setSimplifyFactor(0);
-    }
-  }, [zoom]);
 
   return (
     <>
@@ -229,7 +214,6 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
               setShowEnvisioned(false);
             }
             setShowGaps(!showGaps);
-            
           }}
           type="switch"
           id="custom-switch-gaps"
@@ -258,7 +242,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
       <ZoomControl position="bottomright" />
       <ScaleControl position="bottomright" />
 
-      <MapEventsHandler setZoom={setZoom} setSelectedBasemap={setSelectedBasemap} />
+      <MapEventsHandler setSelectedBasemap={setSelectedBasemap} />
       {layers}
 
       {showWalkingTrail && (
@@ -272,10 +256,45 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           }}
         />
       )}
+
+      {selectedFeature && (
+        <FeatureLayer
+          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+          simplifyFactor={getSimplifyFactor(map.getZoom())}
+          precision={6}
+          eventHandlers={{
+            click: handleFeatureClick,
+            load: () => setIsLoading(false),
+          }}
+          where={`objectid=${selectedFeature.objectid}`}
+          id="selection-layer"
+          key={`${selectedFeature.objectid}`}
+          data={selectedFeature}
+          interactive={false}
+          pane="highlightPane"
+          style={() => {
+            let colorRow;
+            let weight = computePathWeight(true, map.getZoom(), true) * 3;
+
+            colorRow = "cyan";
+
+            return {
+              color: colorRow,
+              stroke: colorRow,
+              weight,
+              opacity: 1,
+              dashOffset: "0",
+              lineCap: "square",
+              zIndex: 999,
+            };
+          }}
+        />
+      )}
       <FeatureLayer
         url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
         key={`${featureQuery}`} //FORCE RELOAD ON QUERY CHANGE
-        simplifyFactor={simplifyFactor}
+        simplifyFactor={getSimplifyFactor(map.getZoom())}
+        precision={6}
         eventHandlers={{
           click: handleFeatureClick,
           load: () => setIsLoading(false),
@@ -284,12 +303,14 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
         style={(feature) => {
           let colorRow;
           let dashArray;
+          let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
+          let weight = computePathWeight(selected, map.getZoom());
           if (feature.properties.seg_type === 1) {
             colorRow = featureColors.sharedUse;
           }
           if (feature.properties.seg_type === 1 && feature.properties.fac_stat === 3) {
             colorRow = featureColors.sharedUse;
-            dashArray = "3,8";
+            dashArray = `${weight},${weight * 2.5}`;
           } else if (feature.properties.seg_type === 6) {
             colorRow = featureColors.sharedUseUnimproved;
           } else if (feature.properties.seg_type === 2) {
@@ -301,7 +322,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           }
           if (feature.properties.seg_type === 5 && feature.properties.fac_stat === 3) {
             colorRow = featureColors.sharedStreet;
-            dashArray = "3,8";
+            dashArray = `${weight},${weight * 2.5}`;
           } else if (
             feature.properties.seg_type === 9 &&
             (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)
@@ -313,17 +334,14 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
             colorRow = featureColors.footTrail;
           } else if (feature.properties.seg_type === 11 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 2)) {
             colorRow = featureColors.footTrail;
-            dashArray = "3,8";
+            dashArray = `${weight},${weight * 2.5}`;
           }
           if (feature.properties.seg_type === 12 && feature.properties.fac_stat === 1) {
             colorRow = featureColors.footTrail;
           } else if (feature.properties.seg_type === 12 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 2)) {
             colorRow = featureColors.footTrail;
-            dashArray = "3,8";
+            dashArray = `${weight},${weight * 2.5}`;
           }
-  
-          let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
-          let weight = computePathWeight(selected, zoom);
 
           return {
             color: colorRow,
@@ -331,6 +349,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
             weight,
             fillOpacity: 0,
             opacity: 1,
+            lineCap: "square",
             dashArray: dashArray,
             dashOffset: "0",
             zIndex: 1000,
@@ -340,37 +359,37 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
       />
       {/* inverted dash extra layer */}
       <FeatureLayer
-       eventHandlers={{
-        click: handleFeatureClick,
-        load: () => setIsLoading(false),
-      }}
+        eventHandlers={{
+          click: handleFeatureClick,
+          load: () => setIsLoading(false),
+        }}
         url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
-        simplifyFactor={simplifyFactor}
+        simplifyFactor={getSimplifyFactor(map.getZoom())}
+        precision={6}
         where={featureQuery + " AND " + negativeFeatureQuery}
         style={(feature) => {
           let colorRow;
           let dashArray;
-         
+          let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
+          let weight = computePathWeight(selected, map.getZoom(), true);
+
           if (feature.properties.seg_type === 1 && feature.properties.fac_stat === 2) {
-            colorRow = "white";  // Shared Use Path - Design
-            dashArray = "3,8";
+            colorRow = "white"; // Shared Use Path - Design
+            dashArray = `${weight},${weight * 2.5}`;
           } else if (feature.properties.seg_type === 2 && feature.properties.fac_stat === 1) {
-            colorRow = "none";  // Protected Bike Lane and Sidewalk
+            colorRow = "none"; // Protected Bike Lane and Sidewalk
           } else if (feature.properties.seg_type === 2 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) {
-            colorRow = "white";  // Protected Bike Lane and Sidewalk design or construction
-            dashArray = "3,8";
+            colorRow = "white"; // Protected Bike Lane and Sidewalk design or construction
+            dashArray = `${weight},${weight * 2.5}`;
           } else if (feature.properties.seg_type === 3 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) {
             colorRow = "white"; // Bike Lane - Design or Construction
-            dashArray = "3,8";
+            dashArray = `${weight},${weight * 2.5}`;
           } else if (feature.properties.seg_type === 4 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 1)) {
             colorRow = "none"; //Shared Street - Urban or suburban
           }
-          if (feature.properties.seg_type == 9) {
+          if (feature.properties.seg_type === 9) {
             colorRow = featureColors.Gap;
           }
-        
-          let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
-          let weight = computePathWeight(selected, zoom);
 
           return {
             color: colorRow,
@@ -380,18 +399,20 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
             opacity: 1,
             dashArray: dashArray,
             dashOffset: "0",
-            zIndex: 1001
+            lineCap: "square",
+            zIndex: 1001,
           };
         }}
         pane="mainPane"
       />
 
       {/* Make gap features layer to be on top of all other features to prevent layer order issues */}
-      {(showGaps) && (
+      {showGaps && (
         <FeatureLayer
           url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
           key={`gaps-${showGaps}-${showEnvisioned}`}
-          simplifyFactor={simplifyFactor}
+          simplifyFactor={getSimplifyFactor(map.getZoom())}
+          precision={6}
           eventHandlers={{
             click: handleFeatureClick,
             load: () => setIsLoading(false),
@@ -399,9 +420,9 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           where={featureQuery}
           style={(feature) => {
             let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
-            let weight = computePathWeight(selected, zoom);
+            let weight = computePathWeight(selected, map.getZoom());
             let isGapFeature = feature.properties.seg_type === 9;
-            
+
             return {
               color: isGapFeature ? "#FF0000" : "#4f1a32",
               stroke: isGapFeature ? "#FF0000" : "#4f1a32",
