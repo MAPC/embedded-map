@@ -272,6 +272,32 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           }}
         />
       )}
+      {/* Border layer for Unimproved Shared Use Path */}
+      <FeatureLayer
+        url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+        key={`border-${featureQuery}`}
+        simplifyFactor={simplifyFactor}
+        eventHandlers={{
+          load: () => setIsLoading(false),
+        }}
+        where={featureQuery + " AND seg_type = 6"}
+        style={(feature) => {
+          let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
+          let weight = computePathWeight(selected, zoom);
+          // Make border thicker to create visible border effect (add ~2-3 pixels)
+          weight = weight + 2.5;
+
+          return {
+            color: featureColors.sharedUse,
+            stroke: featureColors.sharedUse,
+            weight,
+            fillOpacity: 0,
+            opacity: 1,
+            zIndex: 999,
+          };
+        }}
+        pane="outlinePane"
+      />
       <FeatureLayer
         url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
         key={`${featureQuery}`} //FORCE RELOAD ON QUERY CHANGE
@@ -280,7 +306,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           click: handleFeatureClick,
           load: () => setIsLoading(false),
         }}
-        where={featureQuery}
+        where={selectedFeature ? `${featureQuery} AND objectid <> ${selectedFeature.objectid}` : featureQuery}
         style={(feature) => {
           let colorRow;
           let dashArray;
@@ -324,6 +350,16 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
   
           let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
           let weight = computePathWeight(selected, zoom);
+          
+          // Make Shared Use Path, Protected Bike Lane - Design or Construction, and Shared Street (Urban, Suburban, Envisioned) 1.5x wider
+          if (
+            feature.properties.seg_type === 1 ||
+            (feature.properties.seg_type === 2 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) ||
+            (feature.properties.seg_type === 4 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3)) ||
+            (feature.properties.seg_type === 5 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3))
+          ) {
+            weight = weight * 1.5;
+          }
 
           return {
             color: colorRow,
@@ -338,6 +374,122 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
         }}
         pane="outlinePane"
       />
+      {/* Highlight border for selected feature - renders AFTER main layer */}
+      {selectedFeature && (
+        <FeatureLayer
+          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+          key={`highlight-${selectedFeature.objectid}`}
+          simplifyFactor={simplifyFactor}
+          eventHandlers={{
+            load: () => setIsLoading(false),
+          }}
+          where={`objectid = ${selectedFeature.objectid}`}
+          style={(feature) => {
+            // Calculate the same weight as the selected feature will have in main layer
+            let selectedWeight = computePathWeight(true, zoom); // Selected weight is 3x base
+            // Apply same width multipliers as main layer
+            if (
+              feature.properties.seg_type === 1 ||
+              (feature.properties.seg_type === 2 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) ||
+              (feature.properties.seg_type === 4 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3)) ||
+              (feature.properties.seg_type === 5 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3))
+            ) {
+              selectedWeight = selectedWeight * 1.5;
+            }
+            // Make highlight border thicker than the selected feature to create visible border effect
+            let borderWeight = selectedWeight + 6;
+
+            return {
+              color: "#15f4ee",
+              stroke: "#15f4ee",
+              weight: borderWeight,
+              fillOpacity: 0,
+              opacity: 1,
+              zIndex: 50, // Much lower z-index to ensure it renders underneath selected feature
+            };
+          }}
+          pane="outlinePane"
+        />
+      )}
+      {/* Selected feature rendered separately on top of highlight border */}
+      {selectedFeature && (
+        <FeatureLayer
+          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+          key={`selected-${selectedFeature.objectid}`}
+          simplifyFactor={simplifyFactor}
+          eventHandlers={{
+            click: handleFeatureClick,
+            load: () => setIsLoading(false),
+          }}
+          where={`objectid = ${selectedFeature.objectid}`}
+          style={(feature) => {
+            let colorRow;
+            let dashArray;
+            if (feature.properties.seg_type === 1) {
+              colorRow = featureColors.sharedUse;
+            }
+            if (feature.properties.seg_type === 1 && feature.properties.fac_stat === 3) {
+              colorRow = featureColors.sharedUse;
+              dashArray = "3,8";
+            } else if (feature.properties.seg_type === 6) {
+              colorRow = featureColors.sharedUseUnimproved;
+            } else if (feature.properties.seg_type === 2) {
+              colorRow = featureColors.protectedBikeLane;
+            } else if (feature.properties.seg_type === 3) {
+              colorRow = featureColors.bikeLane;
+            } else if (feature.properties.seg_type === 4 || feature.properties.seg_type === 5) {
+              colorRow = featureColors.sharedStreet;
+            }
+            if (feature.properties.seg_type === 5 && feature.properties.fac_stat === 3) {
+              colorRow = featureColors.sharedStreet;
+              dashArray = "3,8";
+            } else if (
+              feature.properties.seg_type === 9 &&
+              (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)
+            ) {
+              colorRow = "#888888";
+            }
+
+            if (feature.properties.seg_type === 11 && feature.properties.fac_stat === 1) {
+              colorRow = featureColors.footTrail;
+            } else if (feature.properties.seg_type === 11 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 2)) {
+              colorRow = featureColors.footTrail;
+              dashArray = "3,8";
+            }
+            if (feature.properties.seg_type === 12 && feature.properties.fac_stat === 1) {
+              colorRow = featureColors.footTrail;
+            } else if (feature.properties.seg_type === 12 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 2)) {
+              colorRow = featureColors.footTrail;
+              dashArray = "3,8";
+            }
+
+            let selected = true; // This is the selected feature
+            let weight = computePathWeight(selected, zoom);
+            
+            // Make Shared Use Path, Protected Bike Lane - Design or Construction, and Shared Street (Urban, Suburban, Envisioned) 1.5x wider
+            if (
+              feature.properties.seg_type === 1 ||
+              (feature.properties.seg_type === 2 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) ||
+              (feature.properties.seg_type === 4 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3)) ||
+              (feature.properties.seg_type === 5 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3))
+            ) {
+              weight = weight * 1.5;
+            }
+
+            return {
+              color: colorRow,
+              stroke: colorRow,
+              weight,
+              fillOpacity: 0,
+              opacity: 1,
+              dashArray: dashArray,
+              dashOffset: "0",
+              zIndex: 2000, // Higher z-index to render on top of highlight border
+            };
+          }}
+          pane="mainPane"
+        />
+      )}
       {/* inverted dash extra layer */}
       <FeatureLayer
        eventHandlers={{
@@ -371,6 +523,16 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
         
           let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
           let weight = computePathWeight(selected, zoom);
+          
+          // Make Shared Use Path, Protected Bike Lane - Design or Construction, and Shared Street (Urban, Suburban, Envisioned) 1.5x wider
+          if (
+            feature.properties.seg_type === 1 ||
+            (feature.properties.seg_type === 2 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) ||
+            (feature.properties.seg_type === 4 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3)) ||
+            (feature.properties.seg_type === 5 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3))
+          ) {
+            weight = weight * 1.5;
+          }
 
           return {
             color: colorRow,
