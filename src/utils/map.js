@@ -11,6 +11,7 @@ const zoomLevels = {
   state: 8.5,
   region: 10,
   municipality: 11,
+  neighborhood: 13,
   censusTract: 15,
   parcel: 18,
 };
@@ -18,19 +19,19 @@ const zoomLevels = {
 export const stateMapProps = {
   center: [42.030590752172635, -71.82353838842278],
   zoom: zoomLevels.region,
-  zoomDelta: 0.25,
+  zoomDelta: 1,
   maxZoom: zoomLevels.parcel,
   minZoom: zoomLevels.state,
-  zoomSnap: 0.25,
+  zoomSnap: 1,
 };
 
 export const regionMapProps = {
   center: [42.3457, -71.17852],
   zoom: zoomLevels.region,
-  zoomDelta: 0.25,
+  zoomDelta: 1,
   maxZoom: zoomLevels.parcel,
   minZoom: zoomLevels.state,
-  zoomSnap: 0.25,
+  zoomSnap: 1,
 };
 
 export const basemaps = {
@@ -219,10 +220,19 @@ export const featureColors = {
 
 export const basePathWeight = 5.0;
 export const maxPathWeight = 10.0;
-export const computePathWeight = (selected, zoom) => {
-  // Make selected paths wider, up to a limit
-  let weight = basePathWeight / (zoom / 10);
-  return selected ? Math.min(weight * 3, maxPathWeight) : weight;
+export const computePathWeight = (selected, zoom, overline = false) => {
+  let weight = Math.max(zoom - 8, 3);
+  if (overline) {
+    weight = weight * 0.5;
+  }
+  return weight;
+};
+
+export const getSimplifyFactor = () => {
+  // In the future, we may want to adjust this based on zoom level, but adjusting this
+  // doesn't substantially improve performance (and may actually degrade performance
+  // because data is reloaded at different zoom levels)
+  return 0;
 };
 
 const segmentTypes = {
