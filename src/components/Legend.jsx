@@ -79,6 +79,10 @@ const Legend = ({ selectedTab = "landlines", selectedType, projectList = [], sel
       color: featureColors.sharedUse,
     },
     {
+      label: "Unimproved Shared Use Path",
+      color: featureColors.sharedUseUnimproved,
+    },
+    {
       label: "Protected Bike Lane",
       color: featureColors.protectedBikeLane,
     },

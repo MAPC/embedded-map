@@ -68,7 +68,7 @@ const MapEventsHandler = ({ setSelectedBasemap }) => {
 };
 
 const negativeFeatureQuery =
-  "(seg_type = 1 AND fac_stat =2 OR seg_type = 2 OR seg_type = 3 AND fac_stat = 2 OR seg_type = 3 AND fac_stat = 3 OR seg_type = 4 AND fac_stat = 1 OR seg_type = 4 AND fac_stat = 3 OR seg_type = 12 OR seg_type = 9)"; // eslint-disable-line max-len
+  "( seg_type = 6  and fac_stat = 1 OR fac_stat = 3 OR fac_stat = 2 OR seg_type = 1 AND fac_stat =2 OR seg_type = 2 OR seg_type = 3 AND fac_stat = 2 OR seg_type = 3 AND fac_stat = 3 OR seg_type = 4 AND fac_stat = 1 OR seg_type = 4 AND fac_stat = 3 OR seg_type = 12 OR seg_type = 9)"; // eslint-disable-line max-len
 
 const clientId = process.env.REACT_APP_AGOL_CLIENT_ID;
 const clientSecret = process.env.REACT_APP_AGOL_CLIENT_SECRET;
@@ -274,7 +274,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           pane="highlightPane"
           style={() => {
             let colorRow;
-            let weight = computePathWeight(true, map.getZoom(), true) * 3;
+            let weight = computePathWeight(true, map.getZoom(), true) * 6.5;
 
             colorRow = "cyan";
 
@@ -306,19 +306,28 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           let selected = selectedFeature != null && selectedFeature.objectid === feature.id;
           let weight = computePathWeight(selected, map.getZoom());
           if (feature.properties.seg_type === 1) {
-            colorRow = featureColors.sharedUse;
+            colorRow = featureColors.sharedUse
+          }
+          if (feature.properties.seg_type ===1 && feature.properties.fac_stat === 1 || feature.properties.fac_stat === 2) {
+            // making the width of Shared Use Path - Existing or Design 1.5x wider
+            weight = weight * 1.5;
           }
           if (feature.properties.seg_type === 1 && feature.properties.fac_stat === 3) {
+            // Shared Use Path - Envisioned
             colorRow = featureColors.sharedUse;
             dashArray = `${weight},${weight * 2.5}`;
           } else if (feature.properties.seg_type === 6) {
-            colorRow = featureColors.sharedUseUnimproved;
+            // add outline to unimproved shared use path
+            colorRow = featureColors.sharedUse;
           } else if (feature.properties.seg_type === 2) {
+            // making the width of Protected Bike Lane and Sidewalk 1.5x wider
+            weight = weight * 1.5;
             colorRow = featureColors.protectedBikeLane;
           } else if (feature.properties.seg_type === 3) {
             colorRow = featureColors.bikeLane;
           } else if (feature.properties.seg_type === 4 || feature.properties.seg_type === 5) {
             colorRow = featureColors.sharedStreet;
+            weight = weight * 1.5;
           }
           if (feature.properties.seg_type === 5 && feature.properties.fac_stat === 3) {
             colorRow = featureColors.sharedStreet;
@@ -375,12 +384,14 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
 
           if (feature.properties.seg_type === 1 && feature.properties.fac_stat === 2) {
             colorRow = "white"; // Shared Use Path - Design
-            dashArray = `${weight},${weight * 2.5}`;
+            weight = weight * 1.5;
+            dashArray = `${weight},${weight * 2.5}`; // (width of the dash, the interval between the dashes)
           } else if (feature.properties.seg_type === 2 && feature.properties.fac_stat === 1) {
             colorRow = "none"; // Protected Bike Lane and Sidewalk
           } else if (feature.properties.seg_type === 2 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) {
             colorRow = "white"; // Protected Bike Lane and Sidewalk design or construction
-            dashArray = `${weight},${weight * 2.5}`;
+            weight = weight * 1.5;
+            dashArray = `${weight},${weight * 2.5}`; // (width of the dash, the interval between the dashes)
           } else if (feature.properties.seg_type === 3 && (feature.properties.fac_stat === 2 || feature.properties.fac_stat === 3)) {
             colorRow = "white"; // Bike Lane - Design or Construction
             dashArray = `${weight},${weight * 2.5}`;
@@ -389,6 +400,11 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           }
           if (feature.properties.seg_type === 9) {
             colorRow = featureColors.Gap;
+          }
+
+          if (feature.properties.seg_type === 6 && (feature.properties.fac_stat === 1 || feature.properties.fac_stat === 3 || feature.properties.fac_stat === 2)) {
+            // Shared Use Path - Unimproved Surface this is to draw trail segment color with light green and its border color is drawn on outlinePane layer using share use path color
+            colorRow = featureColors.sharedUseUnimproved;
           }
 
           return {
