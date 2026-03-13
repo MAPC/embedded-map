@@ -68,7 +68,7 @@ const MapEventsHandler = ({ setSelectedBasemap }) => {
 };
 
 const negativeFeatureQuery =
-  "( seg_type = 6  and fac_stat = 1 OR fac_stat = 3 OR fac_stat = 2 OR seg_type = 1 AND fac_stat =2 OR seg_type = 2 OR seg_type = 3 AND fac_stat = 2 OR seg_type = 3 AND fac_stat = 3 OR seg_type = 4 AND fac_stat = 1 OR seg_type = 4 AND fac_stat = 3 OR seg_type = 12 OR seg_type = 9)"; // eslint-disable-line max-len
+  "( seg_type = 6  and fac_stat = 1 OR fac_stat = 3 OR fac_stat = 2 OR seg_type = 1 AND fac_stat =2 OR seg_type = 2 OR seg_type = 3 AND fac_stat = 2 OR seg_type = 3 AND fac_stat = 3 OR seg_type = 4 AND fac_stat = 1 OR seg_type = 4 AND fac_stat = 3 OR seg_type = 12 OR seg_type = 9)"; // eslint-disable-line max-len 
 
 const clientId = process.env.REACT_APP_AGOL_CLIENT_ID;
 const clientSecret = process.env.REACT_APP_AGOL_CLIENT_SECRET;
@@ -150,6 +150,22 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
     setFeatureQuery(query);
   }, [showEnvisioned, showDesignConstruction, showExisting, showGaps]);
 
+  // Clear selected feature highlight when its layer is unchecked
+  useEffect(() => {
+    if (selectedFeature) {
+      const facStat = selectedFeature.fac_stat;
+      const isVisible = 
+        (facStat === 1 && showExisting) ||
+        (facStat === 2 && showDesignConstruction) ||
+        ((facStat === 3) && (showEnvisioned || showGaps));
+      
+      if (!isVisible) {
+        handleFeatureClick(null);
+      }
+    }
+    
+  }, [showEnvisioned, showDesignConstruction, showExisting, showGaps]);
+
   return (
     <>
       <Form
@@ -163,6 +179,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           checked={showExisting}
           onChange={() => {
             setShowExisting(!showExisting);
+            handleFeatureClick(null); // Clear selection when toggling layer
           }}
           type="switch"
           id="custom-switch"
@@ -173,6 +190,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           checked={showDesignConstruction}
           onChange={() => {
             setShowDesignConstruction(!showDesignConstruction);
+            handleFeatureClick(null); // Clear selection when toggling layer
           }}
           type="switch"
           id="custom-switch"
@@ -188,6 +206,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
               setShowGaps(false);
             }
             setShowEnvisioned(!showEnvisioned);
+            handleFeatureClick(null); // Clear selection when toggling layer
           }}
           type="switch"
           id="custom-switch"
@@ -199,6 +218,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           checked={showPolygons}
           onChange={() => {
             setShowPolygons(!showPolygons);
+            handleFeatureClick(null); // Clear selection when toggling layer
           }}
           type="switch"
           id="custom-switch"
@@ -214,6 +234,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
               setShowEnvisioned(false);
             }
             setShowGaps(!showGaps);
+            handleFeatureClick(null); // Clear selection when toggling layer
           }}
           type="switch"
           id="custom-switch-gaps"
@@ -224,6 +245,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           checked={showWalkingTrail}
           onChange={() => {
             setShowWalkingTrail(!showWalkingTrail);
+            handleFeatureClick(null); // Clear selection when toggling layer
           }}
           type="switch"
           id="custom-switch-walking-trail"
@@ -268,7 +290,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           }}
           where={`objectid=${selectedFeature.objectid}`}
           id="selection-layer"
-          key={`${selectedFeature.objectid}`}
+          key={`highlight-${selectedFeature.objectid}`}
           data={selectedFeature}
           interactive={false}
           pane="highlightPane"
