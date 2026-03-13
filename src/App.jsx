@@ -51,7 +51,11 @@ export const App = ({ wrapperHeight = "100vh" }) => {
     }
   }, []);
   const handleFeatureClick = useCallback((feature) => {
-    if (feature != null && feature.layer.feature.properties) {
+    if (feature == null) {
+      // Clear selection
+      setSelectedFeature();
+      setSelectedType();
+    } else if (feature.layer && feature.layer.feature && feature.layer.feature.properties) {
       setSelectedFeature(feature.layer.feature.properties);
       setSelectedProject();
       setLastSelected("feature");
