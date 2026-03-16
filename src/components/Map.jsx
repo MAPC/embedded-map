@@ -363,15 +363,19 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
 
           if (feature.properties.seg_type === 11 && feature.properties.fac_stat === 1) {
             colorRow = featureColors.footTrail;
+            weight = weight * 0.5;
           } else if (feature.properties.seg_type === 11 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 2)) {
             colorRow = featureColors.footTrail;
-            dashArray = `${weight},${weight * 2.5}`;
+            dashArray = `${weight*0.5},${weight*2.5 }`;
+            weight = weight * 0.5;
           }
           if (feature.properties.seg_type === 12 && feature.properties.fac_stat === 1) {
             colorRow = featureColors.footTrail;
+            weight = weight * 0.5;
           } else if (feature.properties.seg_type === 12 && (feature.properties.fac_stat === 3 || feature.properties.fac_stat === 2)) {
             colorRow = featureColors.footTrail;
-            dashArray = `${weight},${weight * 2.5}`;
+            dashArray = `${weight*0.5},${weight* 2.5 }`;
+            weight = weight * 0.5;
           }
 
           return {
