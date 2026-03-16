@@ -177,7 +177,7 @@ const Sidebar = ({
               <SidebarBottomTitle>Landline Details</SidebarBottomTitle>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Name</SidebarBottomLeft>
-                <SidebarBottomRight>{"N/A"}</SidebarBottomRight>
+                <SidebarBottomRight>{selectedFeature.reg_name ? selectedFeature.reg_name : "N/A"}</SidebarBottomRight>
               </SidebarBottomLine>
               <SidebarBottomLine>
                 <SidebarBottomLeft>Type</SidebarBottomLeft>
