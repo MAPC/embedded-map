@@ -957,7 +957,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           <MapEventsHandler setZoom={setZoom} />
           {layers}
           <FeatureLayer
-            url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+            url="https://geo.mapc.org/server/rest/services/MapcLandlines/MapServer/0"
             key={`${featureQuery}-${featureLayerKey}`} //FORCE RELOAD ON QUERY CHANGE
             simplifyFactor={simplifyFactor}
             eventHandlers={{
