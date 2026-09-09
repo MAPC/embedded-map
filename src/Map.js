@@ -1029,7 +1029,7 @@ export const MAPCMap = ({ wrapperHeight = "100vh", mapFocus = "region", polyPoin
           />
           {/* inverted dash extra layer */}
           <FeatureLayer
-            url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+            url="https://geo.mapc.org/server/rest/services/MapcLandLines/MapServer/0"
             simplifyFactor={simplifyFactor}
             where={featureQuery + " AND " + negativeFeatureQuery}
             style={(feature) => {
