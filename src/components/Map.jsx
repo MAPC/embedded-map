@@ -281,7 +281,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
 
       {selectedFeature && (
         <FeatureLayer
-          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+          url="https://geo.mapc.org/server/rest/services/MapcLandLines/MapServer/0"
           simplifyFactor={getSimplifyFactor(map.getZoom())}
           precision={6}
           eventHandlers={{
@@ -313,7 +313,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
         />
       )}
       <FeatureLayer
-        url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+        url="https://geo.mapc.org/server/rest/services/MapcLandLines/MapServer/0"
         key={`${featureQuery}`} //FORCE RELOAD ON QUERY CHANGE
         simplifyFactor={getSimplifyFactor(map.getZoom())}
         precision={6}
@@ -398,7 +398,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
           click: handleFeatureClick,
           load: () => setIsLoading(false),
         }}
-        url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+        url="https://geo.mapc.org/server/rest/services/MapcLandLines/MapServer/0"
         simplifyFactor={getSimplifyFactor(map.getZoom())}
         precision={6}
         where={featureQuery + " AND " + negativeFeatureQuery}
@@ -451,7 +451,7 @@ export const MAPCMap = ({ projects, selectedProject, selectedFeature, handleProj
       {/* Make gap features layer to be on top of all other features to prevent layer order issues */}
       {showGaps && (
         <FeatureLayer
-          url="https://geo.mapc.org/server/rest/services/transportation/landlines/FeatureServer/0"
+          url="https://geo.mapc.org/server/rest/services/MapcLandLines/MapServer/0"
           key={`gaps-${showGaps}-${showEnvisioned}`}
           simplifyFactor={getSimplifyFactor(map.getZoom())}
           precision={6}
